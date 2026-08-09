@@ -1,4 +1,5 @@
 import net from 'node:net';
+import { t } from './i18n.js';
 
 export const DEFAULT_BASE_URL = 'https://salta7-store.ngrok.app';
 export const DEFAULT_TIMEOUT_MS = 30_000;
@@ -46,8 +47,8 @@ export class Salta7Client {
     allowInsecureHttp = false,
     fetchImpl = globalThis.fetch,
   } = {}) {
-    if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) throw new CLIError('timeout must be greater than 0.');
-    if (!Number.isInteger(retries) || retries < 1) throw new CLIError('retries must be at least 1.');
+    if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) throw new CLIError(t('timeoutPositive'));
+    if (!Number.isInteger(retries) || retries < 1) throw new CLIError(t('retriesPositive'));
     if (typeof fetchImpl !== 'function') throw new CLIError('This Node.js runtime does not provide fetch().');
     this.baseUrl = validateBaseUrl(baseUrl, { allowInsecureHttp });
     this.token = token;
@@ -57,9 +58,9 @@ export class Salta7Client {
   }
 
   headers(auth = false) {
-    const headers = { 'user-agent': 'salta7-cli-node/0.1.0', accept: 'application/json' };
+    const headers = { 'user-agent': 'salta7-cli-node/0.2.0', accept: 'application/json' };
     if (auth) {
-      if (!this.token) throw new CLIError('This command requires an API token. Set SALTA7_TOKEN or pass --token.');
+      if (!this.token) throw new CLIError(t('tokenRequired'));
       headers.authorization = `Bearer ${this.token}`;
     }
     return headers;

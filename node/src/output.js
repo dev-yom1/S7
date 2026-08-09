@@ -19,10 +19,10 @@ export function sanitize(value, { revealSecrets = false, key = '' } = {}) {
   return value;
 }
 
-export function printResult(value, { json = false, compact = false, revealSecrets = false } = {}) {
+export function printResult(value, { json = false, jsonl = false, compact = false, revealSecrets = false } = {}) {
   const safe = sanitize(value, { revealSecrets });
-  if (json || compact) {
-    console.log(JSON.stringify(safe, null, compact ? 0 : 2));
+  if (json || jsonl || compact) {
+    console.log(JSON.stringify(safe, null, (compact || jsonl) ? 0 : 2));
     return;
   }
   if (Array.isArray(safe)) {
