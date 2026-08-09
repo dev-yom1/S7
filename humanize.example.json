@@ -1,0 +1,5 @@
+{
+  "name": {"source": "random"},
+  "avatar": {"source": "random"},
+  "bio": {"source": "custom", "value": "coffee and code"}
+}

@@ -1,5 +1,9 @@
 # ⚡ Salta7 CLI — `s7`
 
+[![CI](https://github.com/dev-yom1/S7/actions/workflows/ci.yml/badge.svg)](https://github.com/dev-yom1/S7/actions/workflows/ci.yml)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 A polished Python command-line client for the Salta7 Store API, with multilingual UI, friendly colored output, task progress monitoring, raw JSON modes, and an arrow-key interactive menu.
 
 > **API reference:** `https://salta7-store.vercel.app/api`
@@ -26,10 +30,11 @@ A polished Python command-line client for the Salta7 Store API, with multilingua
 
 ### From a source checkout
 
-Clone or download the repository, then:
+Clone the repository, then:
 
 ```bash
-cd salta7-cli
+git clone https://github.com/dev-yom1/S7.git
+cd S7
 python -m venv .venv
 ```
 
@@ -543,7 +548,7 @@ s7 --no-color task active
 ## Project layout
 
 ```text
-salta7-cli/
+S7/
 ├── src/salta7_cli/
 │   ├── __init__.py
 │   ├── __main__.py
@@ -552,8 +557,10 @@ salta7-cli/
 │   ├── humanize.py
 │   ├── i18n.py
 │   ├── interactive.py
-│   ├── locale_hi.py
+│   ├── locale_en.py
+│   ├── locale_ja.py
 │   ├── locale_ko.py
+│   ├── locale_hi.py
 │   ├── output.py
 │   └── utils.py
 ├── tests/

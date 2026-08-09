@@ -1,0 +1,42 @@
+name: Bug report
+description: Report a reproducible problem in the CLI
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: "Do not include API tokens, account tokens, passwords, or delivered credentials."
+  - type: input
+    id: version
+    attributes:
+      label: CLI version
+      description: Output of `s7 --version`
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: OS and Python version
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Reproduction steps
+      description: Use redacted sample values only.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: Paste only redacted output.
+    validations:
+      required: true
