@@ -279,6 +279,76 @@ s7 task items JOB_ID
 s7 task items JOB_ID --byot
 ```
 
+## 用語: Stock / BYOT / Humanize
+
+Boost・Join・Humanizeの各タスクでよく出てくる用語です。最初にここを読むと、`--mode stock` と `--mode byot` の違いが分かりやすくなります。
+
+### Stockモード
+
+**StockモードはSalta7側の在庫・リソースを使う方式**です。必要に応じてAPIの商品一覧からproductや数量を選び、自分のtokenファイルは渡しません。
+
+```bash
+s7 task join --mode stock --invite discord.gg/abc123 --quantity 10
+```
+
+### BYOTモード
+
+**BYOTは、Salta7のStockを使わず、自分で用意したアカウントtokenを渡して使うモード**です。API docsではモード名やBYOT専用のquote/itemsエンドポイントに `byot` という名前が使われています。
+
+なお、API docs上では「BYOT」という略語の展開形までは明記されていないため、このREADMEでは略の正式名称を断定せず、**「自分のtokenを使うモード」**として説明します。
+
+tokenファイルは基本的に1行1tokenです。
+
+```text
+TOKEN_1
+TOKEN_2
+TOKEN_3
+```
+
+`--tokens-file` で指定します。
+
+```bash
+s7 task join --mode byot --invite discord.gg/abc123 --tokens-file tokens.txt
+```
+
+すでに自分でアカウント/tokenを持っていて、そのtokenを使ってタスクを実行したい場合にBYOTを使います。
+
+> **重要:** tokenファイルは認証情報です。Gitへcommitしたり、Issueへ添付したり、ログへ貼り付けたり、他人へ共有しないでください。ローカルで秘密に保管してください。macOS/Linuxでは、S7が緩すぎるファイル権限も警告します。
+
+`task byot-quote` はBYOTの**事前見積もり**です。見積もりを取得するだけで、タスクは開始しません。
+
+```bash
+s7 task byot-quote --tokens-file tokens.txt
+```
+
+### Humanize — プロフィール設定
+
+S7でいう **Humanizeは「文章を人間らしく書き換える機能」ではなく、タスク対象アカウントのプロフィール項目を設定・ランダム化する機能**です。
+
+APIのHumanize objectで扱う主な項目:
+
+- Avatar
+- Banner
+- Name
+- Bio
+- Pronouns
+- HypeSquad
+
+S7ではこれらを通常のCLIオプションとして指定でき、API用JSONは内部で組み立てます。Humanize単体のタスクとして実行できるほか、対応するBoost/Joinタスクへ追加することもできます。
+
+```bash
+s7 task humanize \
+  --mode stock \
+  --quantity 10 \
+  --random-all \
+  --name "Leo" \
+  --wait
+```
+
+`--random-all` はAPIがrandom対応している項目だけをランダム化します。Bannerはcustomのみなので変更しません。
+
+Humanizeは、自分が管理権限を持つアカウントに対してのみ利用してください。
+
 ## タスク監視
 
 ```bash
@@ -341,7 +411,7 @@ s7 task join \
 
 ## Humanize
 
-HumanizeはCLIネイティブです。通常利用ではJSONを書く必要はありません。
+上で説明したとおり、HumanizeはS7の**アカウントプロフィール設定機能**です。Avatar・Banner・Name・Bio・Pronouns・HypeSquadなどを設定またはランダム化できます。CLIネイティブなので、通常利用ではJSONを書く必要はありません。
 
 対応項目をすべてランダム化:
 
@@ -421,6 +491,8 @@ s7 task humanize --mode stock --product PRODUCT_SLUG --quantity 2 \
 Humanizeオプションは `task boost` / `task join` に追加することもできます。
 
 ## BYOT見積もり
+
+BYOTを実行する前に、tokenファイルや指定オプションから見積もりを確認するためのコマンドです。**見積もりだけを返し、タスク自体は開始しません。**
 
 ```bash
 s7 task byot-quote --tokens-file tokens.txt

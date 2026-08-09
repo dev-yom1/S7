@@ -277,6 +277,76 @@ s7 task items JOB_ID
 s7 task items JOB_ID --byot
 ```
 
+## शब्दावली: Stock / BYOT / Humanize
+
+ये शब्द Boost, Join और Humanize tasks में बार-बार आते हैं। इन्हें पहले समझ लेने से `--mode stock` और `--mode byot` का अंतर साफ हो जाता है।
+
+### Stock mode
+
+**Stock mode Salta7 द्वारा उपलब्ध कराए गए stock/resources का उपयोग करता है।** जरूरत होने पर API product list से product और quantity चुनी जाती है; आपको अपनी token file देने की जरूरत नहीं होती।
+
+```bash
+s7 task join --mode stock --invite discord.gg/abc123 --quantity 10
+```
+
+### BYOT mode
+
+**BYOT वह mode है जिसमें Salta7 Stock की जगह आप अपने account tokens देते हैं।** API documentation mode name और BYOT-specific quote/items endpoints के लिए `byot` नाम उपयोग करता है।
+
+API documentation “BYOT” acronym का full form स्पष्ट रूप से नहीं बताता, इसलिए यह README किसी expansion को official term नहीं मानता और इसे **“अपने tokens उपयोग करने वाला mode”** कहकर समझाता है।
+
+Token file में सामान्यतः एक line में एक token होता है।
+
+```text
+TOKEN_1
+TOKEN_2
+TOKEN_3
+```
+
+इसे `--tokens-file` से दें:
+
+```bash
+s7 task join --mode byot --invite discord.gg/abc123 --tokens-file tokens.txt
+```
+
+अगर आपके पास ऐसे accounts/tokens पहले से हैं जिन्हें उपयोग करने की आपको अनुमति है, और आप उन्हीं tokens से task चलाना चाहते हैं, तो BYOT उपयोग करें।
+
+> **Security:** token file credential data है। इसे Git में commit न करें, Issue में upload न करें, logs में paste न करें और किसी से share न करें। इसे local और private रखें। macOS/Linux पर S7 बहुत खुले file permissions के लिए warning भी देता है।
+
+`task byot-quote` केवल BYOT का **पहले से estimate** देता है। यह task शुरू नहीं करता।
+
+```bash
+s7 task byot-quote --tokens-file tokens.txt
+```
+
+### Humanize — profile customization
+
+S7 में **Humanize का मतलब text को “human-like” बनाना नहीं है। यह task में उपयोग होने वाले accounts की profile fields को set या randomize करने का feature है।**
+
+API Humanize object के मुख्य fields:
+
+- Avatar
+- Banner
+- Name
+- Bio
+- Pronouns
+- HypeSquad
+
+S7 में इन्हें सामान्य CLI flags से दिया जाता है और API JSON internally बनाया जाता है। Humanize को अलग task की तरह चला सकते हैं या supported Boost/Join tasks में जोड़ सकते हैं।
+
+```bash
+s7 task humanize \
+  --mode stock \
+  --quantity 10 \
+  --random-all \
+  --name "Leo" \
+  --wait
+```
+
+`--random-all` केवल API के random-supported fields को randomize करता है। Banner custom-only है, इसलिए नहीं बदलता।
+
+Humanize केवल उन accounts पर उपयोग करें जिन्हें manage करने की आपको अनुमति है।
+
 ## Task monitor करना
 
 ```bash
@@ -339,7 +409,7 @@ s7 task join \
 
 ## Humanize
 
-Humanize CLI-native है — सामान्य उपयोग में JSON लिखने की जरूरत नहीं है।
+ऊपर बताए अनुसार, Humanize S7 का **account profile customization feature** है। इससे Avatar, Banner, Name, Bio, Pronouns और HypeSquad जैसी settings set या randomize की जा सकती हैं। यह CLI-native है, इसलिए सामान्य उपयोग में JSON लिखने की जरूरत नहीं है।
 
 API के randomizable fields को randomize करें:
 
@@ -419,6 +489,8 @@ s7 task humanize --mode stock --product PRODUCT_SLUG --quantity 2 \
 यही Humanize flags `task boost` और `task join` में भी जोड़े जा सकते हैं।
 
 ## BYOT quote
+
+BYOT चलाने से पहले token file और options के आधार पर estimate देखने के लिए इसका उपयोग करें। **यह केवल quote देता है; task create या execute नहीं करता।**
 
 ```bash
 s7 task byot-quote --tokens-file tokens.txt

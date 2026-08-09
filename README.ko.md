@@ -277,6 +277,76 @@ s7 task items JOB_ID
 s7 task items JOB_ID --byot
 ```
 
+## 용어: Stock / BYOT / Humanize
+
+Boost, Join, Humanize 작업에서 자주 나오는 용어입니다. 먼저 이해해 두면 `--mode stock`과 `--mode byot`의 차이가 명확해집니다.
+
+### Stock 모드
+
+**Stock 모드는 Salta7에서 제공하는 재고/리소스를 사용하는 방식**입니다. 필요한 경우 API 상품 목록에서 product와 수량을 선택하며, 자신의 token 파일을 제공하지 않습니다.
+
+```bash
+s7 task join --mode stock --invite discord.gg/abc123 --quantity 10
+```
+
+### BYOT 모드
+
+**BYOT는 Salta7 Stock 대신 사용자가 직접 준비한 account token을 전달해 사용하는 모드**입니다. API 문서에서는 모드 이름과 BYOT 전용 quote/items endpoint에 `byot`라는 이름을 사용합니다.
+
+API 문서에는 “BYOT” 약어의 풀네임이 명시되어 있지 않으므로, 이 README에서는 공식 확장형을 단정하지 않고 **“자신의 token을 사용하는 모드”**로 설명합니다.
+
+token 파일은 보통 한 줄에 token 하나를 둡니다.
+
+```text
+TOKEN_1
+TOKEN_2
+TOKEN_3
+```
+
+`--tokens-file`로 지정합니다.
+
+```bash
+s7 task join --mode byot --invite discord.gg/abc123 --tokens-file tokens.txt
+```
+
+이미 본인이 사용할 권한이 있는 계정/token을 가지고 있고, 그 token으로 작업을 실행하고 싶을 때 BYOT를 사용합니다.
+
+> **보안:** token 파일은 인증 정보입니다. Git에 commit하거나 Issue에 첨부하거나 로그에 붙여넣거나 다른 사람과 공유하지 마세요. 로컬에서 비공개로 보관하세요. macOS/Linux에서는 S7가 너무 넓은 파일 권한도 경고합니다.
+
+`task byot-quote`는 BYOT의 **사전 견적**입니다. 실제 작업을 시작하지 않습니다.
+
+```bash
+s7 task byot-quote --tokens-file tokens.txt
+```
+
+### Humanize — 프로필 설정
+
+S7의 **Humanize는 텍스트를 “사람처럼” 바꾸는 기능이 아니라, 작업에 사용되는 계정의 프로필 항목을 설정하거나 랜덤화하는 기능**입니다.
+
+API Humanize object의 주요 항목:
+
+- Avatar
+- Banner
+- Name
+- Bio
+- Pronouns
+- HypeSquad
+
+S7에서는 이 값을 일반 CLI 옵션으로 지정하고 API용 JSON은 내부에서 생성합니다. Humanize를 독립 작업으로 실행하거나 지원되는 Boost/Join 작업에 추가할 수 있습니다.
+
+```bash
+s7 task humanize \
+  --mode stock \
+  --quantity 10 \
+  --random-all \
+  --name "Leo" \
+  --wait
+```
+
+`--random-all`은 API가 random을 지원하는 항목만 랜덤화합니다. Banner는 custom 전용이므로 변경하지 않습니다.
+
+Humanize는 사용자가 관리 권한을 가진 계정에만 사용하세요.
+
 ## 작업 모니터링
 
 ```bash
@@ -339,7 +409,7 @@ s7 task join \
 
 ## Humanize
 
-Humanize는 CLI 네이티브입니다. 일반 사용에서는 JSON을 직접 작성할 필요가 없습니다.
+위에서 설명한 것처럼 Humanize는 S7의 **계정 프로필 설정 기능**입니다. Avatar, Banner, Name, Bio, Pronouns, HypeSquad 등을 설정하거나 랜덤화할 수 있습니다. CLI 네이티브이므로 일반 사용에서는 JSON을 직접 작성할 필요가 없습니다.
 
 지원되는 랜덤 필드 전체 적용:
 
@@ -419,6 +489,8 @@ s7 task humanize --mode stock --product PRODUCT_SLUG --quantity 2 \
 같은 Humanize 플래그를 `task boost`와 `task join`에도 추가할 수 있습니다.
 
 ## BYOT 견적
+
+BYOT를 실행하기 전에 token 파일과 옵션을 기준으로 예상값을 확인하는 명령입니다. **견적만 반환하며 실제 작업은 시작하지 않습니다.**
 
 ```bash
 s7 task byot-quote --tokens-file tokens.txt
