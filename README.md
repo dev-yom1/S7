@@ -4,6 +4,8 @@
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
+**English** | **[日本語](README.ja.md)** | **[한국어](README.ko.md)** | **[हिन्दी](README.hi.md)**
+
 A polished Python command-line client for the Salta7 Store API, with multilingual UI, friendly colored output, task progress monitoring, raw JSON modes, and an arrow-key interactive menu.
 
 > **API reference:** `https://salta7-store.vercel.app/api`
@@ -565,6 +567,10 @@ S7/
 │   └── utils.py
 ├── tests/
 ├── .github/workflows/ci.yml
+├── README.md
+├── README.ja.md
+├── README.ko.md
+├── README.hi.md
 ├── CHANGELOG.md
 ├── CONTRIBUTING.md
 ├── SECURITY.md
