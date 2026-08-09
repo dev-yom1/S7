@@ -213,6 +213,22 @@ s7 --reveal-secrets history-items TX_ID
 s7 --reveal-secrets task items JOB_ID
 ```
 
+## S7 업데이트
+
+게시된 GitHub Release에 새 버전이 있는지 확인할 수 있습니다.
+
+```bash
+s7 update --check
+```
+
+업데이트가 있으면 다음 명령으로 설치할 수 있습니다.
+
+```bash
+s7 update
+```
+
+비대화형 환경에서는 `s7 update --yes`를 사용합니다. S7은 이 저장소의 안정 버전 tag만 HTTPS를 통해 설치합니다. 아직 GitHub Release가 없다면 오류로 처리하지 않고 안내 후 종료합니다.
+
 ## 진단
 
 ```bash

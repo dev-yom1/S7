@@ -9,6 +9,7 @@ from .locale_en import TRANSLATIONS as EN
 from .locale_hi import TRANSLATIONS as HI
 from .locale_ja import TRANSLATIONS as JA
 from .locale_ko import TRANSLATIONS as KO
+from .locale_updates import TRANSLATIONS as UPDATE_TRANSLATIONS
 
 DEFAULT_LANGUAGE = "en"
 SUPPORTED_LANGUAGES = ("en", "ja", "ko", "hi")
@@ -20,6 +21,8 @@ _TRANSLATIONS: dict[str, dict[str, str]] = {
     "ko": KO,
     "hi": HI,
 }
+for _language_name, _extra in UPDATE_TRANSLATIONS.items():
+    _TRANSLATIONS[_language_name].update(_extra)
 
 _LANGUAGE_ALIASES = {
     "en": "en", "eng": "en", "english": "en",

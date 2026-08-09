@@ -1,6 +1,7 @@
 from unittest.mock import Mock, patch
 
 import requests
+import pytest
 
 from salta7_cli.client import CLIError, RetryConfig, Salta7Client
 
@@ -69,3 +70,21 @@ def test_task_create_is_not_retried():
     else:
         raise AssertionError("expected CLIError")
     assert session.request.call_count == 1
+
+
+
+def test_https_is_required_by_default():
+    with pytest.raises(CLIError):
+        Salta7Client("http://example.test", "secret")
+
+
+def test_insecure_http_can_only_be_enabled_for_loopback():
+    local = Salta7Client("http://127.0.0.1:8000", "secret", allow_insecure_http=True)
+    assert local.base_url == "http://127.0.0.1:8000"
+    with pytest.raises(CLIError):
+        Salta7Client("http://example.test", "secret", allow_insecure_http=True)
+
+
+def test_non_positive_timeout_is_rejected():
+    with pytest.raises(CLIError):
+        Salta7Client("https://example.test", "secret", timeout=0)

@@ -354,7 +354,7 @@ def render_task_created(result: Any, payload: Dict[str, Any]) -> None:
         print(f"           {paint(t('field.humanize_fields'), 'dim')}: {paint(fields, 'bold')}")
 
 
-def render_task_status(job: Any) -> None:
+def render_task_status(job: Any, *, reveal_secrets: bool = False) -> None:
     if not isinstance(job, dict):
         render_result(job, t("task.status"))
         return
@@ -381,4 +381,10 @@ def render_task_status(job: Any) -> None:
 
     for key in ("error", "message", "reason", "humanize_failed", "failed"):
         if key in job and job[key] not in (None, "", 0, False):
-            print(f"           {pretty_label(key)}: {scalar_text(job[key])}")
+            safe_value = sanitize(job[key], reveal_secrets=reveal_secrets, key=key)
+            rendered = (
+                json.dumps(safe_value, ensure_ascii=False, separators=(", ", ": "))
+                if isinstance(safe_value, (dict, list))
+                else scalar_text(safe_value)
+            )
+            print(f"           {pretty_label(key)}: {rendered}")

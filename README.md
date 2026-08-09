@@ -280,6 +280,22 @@ s7 --reveal-secrets task items JOB_ID
 
 For raw data, `--json`/`--jsonl` also preserve the API response exactly.
 
+## Updating S7
+
+Check whether a newer published GitHub Release is available:
+
+```bash
+s7 update --check
+```
+
+If an update is available, install it with:
+
+```bash
+s7 update
+```
+
+In non-interactive environments, use `s7 update --yes`. S7 installs only stable version tags from this repository and uses HTTPS. If no GitHub Release has been published yet, the command exits normally and reports that there is no release.
+
 ## Diagnostics
 
 ```bash

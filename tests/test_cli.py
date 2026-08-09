@@ -44,3 +44,12 @@ def test_parser_supports_cli_friendly_humanize_flags():
     assert args.random_avatar is True
     assert args.name == "Leo"
     assert args.hypesquad == "balance"
+
+
+
+def test_parser_supports_update_and_insecure_http_flag():
+    parser = build_parser()
+    args = parser.parse_args(["--allow-insecure-http", "update", "--check"])
+    assert args.allow_insecure_http is True
+    assert args.command == "update"
+    assert args.check is True

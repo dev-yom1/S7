@@ -213,6 +213,22 @@ s7 --reveal-secrets history-items TX_ID
 s7 --reveal-secrets task items JOB_ID
 ```
 
+## S7 अपडेट करना
+
+Published GitHub Release में नया version उपलब्ध है या नहीं, यह जांचें:
+
+```bash
+s7 update --check
+```
+
+Update उपलब्ध होने पर इसे आसानी से install करें:
+
+```bash
+s7 update
+```
+
+Non-interactive environment में `s7 update --yes` इस्तेमाल करें। S7 केवल इसी repository के stable version tags को HTTPS से install करता है। यदि अभी कोई GitHub Release publish नहीं हुआ है, command सामान्य रूप से जानकारी देकर exit करता है।
+
 ## Diagnostics
 
 ```bash

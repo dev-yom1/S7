@@ -587,3 +587,20 @@ s7 --help
 ## ライセンス
 
 MIT License。詳しくは [`LICENSE`](LICENSE) を参照してください。
+
+## S7のアップデート
+
+公開済みGitHub Releaseに新しいバージョンがあるか確認できます。
+
+```bash
+s7 update --check
+```
+
+アップデートがある場合は、次で簡単に更新できます。
+
+```bash
+s7 update
+```
+
+非対話環境では `s7 update --yes` を使用します。S7はこのリポジトリの安定版version tagだけをHTTPS経由でインストールします。まだGitHub Releaseが公開されていない場合はエラーにせず、その旨を表示して終了します。
+

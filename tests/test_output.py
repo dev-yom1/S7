@@ -66,3 +66,24 @@ def test_nested_record_lists_render_as_cards(capsys):
 def test_display_width_handles_korean_and_devanagari():
     assert _display_width("가격") == 4
     assert _display_width("कि") == 1
+
+
+
+def test_task_status_masks_nested_secret_in_error(capsys):
+    from salta7_cli.output import render_task_status
+
+    render_task_status({"status": "failed", "error": {"token": "supersecret-token-value", "reason": "bad"}})
+    out = capsys.readouterr().out
+    assert "supersecret-token-value" not in out
+    assert "sup…lue" in out
+    assert "bad" in out
+
+
+def test_task_status_reveal_secrets_is_explicit(capsys):
+    from salta7_cli.output import render_task_status
+
+    render_task_status(
+        {"status": "failed", "error": {"token": "supersecret-token-value"}},
+        reveal_secrets=True,
+    )
+    assert "supersecret-token-value" in capsys.readouterr().out

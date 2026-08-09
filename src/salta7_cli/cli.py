@@ -25,6 +25,7 @@ from .output import (
     render_task_status,
     task_signature,
 )
+from .updater import check_for_update, install_update
 from .utils import ensure_range, load_tokens, token_file_permissions_warning
 
 APP_NAME = "Salta7 CLI"
@@ -108,6 +109,11 @@ def build_parser(language: Optional[str] = None) -> argparse.ArgumentParser:
         help=t("help.lang", languages=", ".join(("auto", *SUPPORTED_LANGUAGES))),
     )
     parser.add_argument("--base-url", default=os.getenv("SALTA7_BASE_URL", DEFAULT_BASE_URL), help=t("help.base_url"))
+    parser.add_argument(
+        "--allow-insecure-http",
+        action="store_true",
+        help=t("help.allow_insecure_http"),
+    )
     parser.add_argument("--token", default=os.getenv("SALTA7_TOKEN"), help=t("help.token"))
     parser.add_argument("--timeout", type=float, default=DEFAULT_TIMEOUT, help=t("help.timeout"))
     parser.add_argument("--retries", type=int, default=3, help=t("help.retries"))
@@ -127,6 +133,9 @@ def build_parser(language: Optional[str] = None) -> argparse.ArgumentParser:
     sub.add_parser("menu", help=t("help.menu"))
     sub.add_parser("doctor", help=t("help.doctor"))
     sub.add_parser("prices", help=t("help.prices"))
+    p = sub.add_parser("update", help=t("help.update"))
+    p.add_argument("--check", action="store_true", help=t("help.update_check"))
+    p.add_argument("-y", "--yes", action="store_true", help=t("help.update_yes"))
 
     p = sub.add_parser("stock", help=t("help.stock"))
     p.add_argument("account", nargs="?", help=t("help.stock_account"))
@@ -227,6 +236,7 @@ def wait_for_job(
     json_mode: bool,
     compact: bool,
     jsonl: bool,
+    reveal_secrets: bool = False,
     heartbeat: float = 60.0,
 ) -> Any:
     if interval <= 0:
@@ -247,7 +257,7 @@ def wait_for_job(
             elif json_mode:
                 print_json(job, compact=compact)
             else:
-                render_task_status(job)
+                render_task_status(job, reveal_secrets=reveal_secrets)
             last_signature = signature
             last_print = now
         if terminal:
@@ -274,6 +284,7 @@ def maybe_wait(client: Salta7Client, result: Any, payload: Dict[str, Any], args:
                 json_mode=json_mode,
                 compact=args.compact,
                 jsonl=args.jsonl,
+                reveal_secrets=args.reveal_secrets,
             )
 
 
@@ -320,7 +331,17 @@ def main(argv: Optional[Iterable[str]] = None) -> int:
     configure_color(args.no_color, json_mode)
 
     retry_attempts = max(1, args.retries)
-    client = Salta7Client(args.base_url, args.token, args.timeout, retry=RetryConfig(attempts=retry_attempts))
+    try:
+        client = Salta7Client(
+            args.base_url,
+            args.token,
+            args.timeout,
+            retry=RetryConfig(attempts=retry_attempts),
+            allow_insecure_http=args.allow_insecure_http,
+        )
+    except CLIError as exc:
+        log_line("✗", f"{paint(t('common.error'), 'red', 'bold')}: {exc}", stream=sys.stderr)
+        return 1
 
     if not args.command:
         if sys.stdin.isatty() and sys.stdout.isatty() and not json_mode:
@@ -342,6 +363,7 @@ def main(argv: Optional[Iterable[str]] = None) -> int:
     titles = {
         "doctor": t("title.doctor"),
         "prices": t("title.prices"),
+        "update": t("title.update"),
         "stock": t("title.stock"),
         "balance": t("title.balance"),
         "buy": t("title.purchase"),
@@ -379,6 +401,31 @@ def main(argv: Optional[Iterable[str]] = None) -> int:
             return 0 if run_doctor(client) else 1
         if args.command == "prices":
             output(client.prices(), t("title.prices"))
+            return 0
+        if args.command == "update":
+            info = check_for_update(__version__)
+            if json_mode:
+                output(info, t("title.update"))
+            elif not info.get("release_found"):
+                log_line("•", t("update.no_release"))
+            elif info.get("update_available"):
+                log_line("!", t("update.available", current=__version__, latest=info["latest_version"]))
+            else:
+                log_line("✓", t("update.up_to_date", version=__version__))
+
+            if args.check or not info.get("update_available"):
+                return 0
+            if not args.yes:
+                if not sys.stdin.isatty():
+                    raise CLIError(t("update.tty_required"))
+                answer = input(t("update.confirm", latest=info["latest_version"]) + " [y/N]: ").strip().lower()
+                if answer not in {"y", "yes", "はい", "h", "예", "네", "हाँ", "हां"}:
+                    return 0
+            if not json_mode:
+                log_line("⟳", t("update.installing", latest=info["latest_version"]))
+            install_update(str(info["tag_name"]))
+            if not json_mode:
+                log_line("✓", t("update.success", latest=info["latest_version"]))
             return 0
         if args.command == "stock":
             account = _resolve_store_product(client, args.account, json_mode=json_mode, action="stock")
@@ -425,10 +472,11 @@ def main(argv: Optional[Iterable[str]] = None) -> int:
                     json_mode=json_mode,
                     compact=args.compact,
                     jsonl=args.jsonl,
+                    reveal_secrets=args.reveal_secrets,
                 )
             else:
                 job = client.task_status(args.job_id)
-                output(job, t("title.task_status")) if json_mode else render_task_status(job)
+                output(job, t("title.task_status")) if json_mode else render_task_status(job, reveal_secrets=args.reveal_secrets)
             return 0
         if tc == "history":
             ensure_range(args.limit, 1, 100, "limit")

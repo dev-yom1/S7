@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import ipaddress
 import time
 from dataclasses import dataclass
 from email.utils import parsedate_to_datetime
 from typing import Any, Dict, Optional
+from urllib.parse import urlparse
 
 import requests
 
@@ -17,6 +19,33 @@ RETRYABLE_STATUS = {429, 500, 502, 503, 504}
 
 class CLIError(RuntimeError):
     """Expected, user-facing CLI error."""
+
+
+def _is_loopback_host(hostname: Optional[str]) -> bool:
+    if not hostname:
+        return False
+    if hostname.lower() == "localhost":
+        return True
+    try:
+        return ipaddress.ip_address(hostname).is_loopback
+    except ValueError:
+        return False
+
+
+def validate_base_url(base_url: str, *, allow_insecure_http: bool = False) -> str:
+    normalized = base_url.rstrip("/")
+    parsed = urlparse(normalized)
+    if not parsed.scheme or not parsed.hostname:
+        raise CLIError(t("client.base_url_invalid"))
+    if parsed.scheme == "https":
+        return normalized
+    if parsed.scheme == "http":
+        if allow_insecure_http and _is_loopback_host(parsed.hostname):
+            return normalized
+        if allow_insecure_http:
+            raise CLIError(t("client.insecure_http_local_only"))
+        raise CLIError(t("client.https_required"))
+    raise CLIError(t("client.base_url_invalid"))
 
 
 @dataclass(frozen=True)
@@ -34,9 +63,12 @@ class Salta7Client:
         timeout: float = DEFAULT_TIMEOUT,
         retry: RetryConfig = RetryConfig(),
         session: Optional[requests.Session] = None,
+        allow_insecure_http: bool = False,
     ) -> None:
-        self.base_url = base_url.rstrip("/")
+        self.base_url = validate_base_url(base_url, allow_insecure_http=allow_insecure_http)
         self.token = token
+        if timeout <= 0:
+            raise CLIError(t("error.timeout_positive"))
         self.timeout = timeout
         self.retry = retry
         self.session = session or requests.Session()

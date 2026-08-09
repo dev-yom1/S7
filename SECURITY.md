@@ -13,3 +13,7 @@ Salta7 CLI handles API tokens and may handle account/token files. Treat these as
 ## Vulnerability reports
 
 If you discover a vulnerability that could expose credentials or cause unintended purchases/tasks, report it privately to the repository maintainer rather than opening a public issue containing exploit details or secrets.
+
+## Transport security
+
+S7 requires HTTPS for API base URLs. Plain HTTP is only available for explicit local development with `--allow-insecure-http`, and even then only for localhost/loopback addresses. Never send API tokens over plain HTTP to remote hosts.
