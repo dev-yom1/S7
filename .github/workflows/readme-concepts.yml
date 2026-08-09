@@ -1,0 +1,365 @@
+name: Update README concepts
+
+on:
+  push:
+    branches: [develop]
+    paths:
+      - .github/workflows/readme-concepts.yml
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: develop
+
+      - name: Explain BYOT and Humanize in all READMEs
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          patches = {
+              "README.md": {
+                  "concept_marker": "## Watch a task",
+                  "concept_heading": "## Concepts: Stock, BYOT, and Humanize",
+                  "concept": r'''## Concepts: Stock, BYOT, and Humanize
+
+These terms appear throughout the task commands, so it helps to understand them before using Boost, Join, or Humanize.
+
+### Stock mode
+
+**Stock mode uses accounts/tokens supplied from Salta7's available stock.** You choose the task and, where required, a product/quantity from the API. You do not provide your own token file.
+
+Use Stock when you want the task to use Salta7-provided resources:
+
+```bash
+s7 task join --mode stock --invite discord.gg/abc123 --quantity 10
+```
+
+### BYOT — Bring Your Own Tokens
+
+**BYOT means “Bring Your Own Tokens.”** Instead of using Salta7 stock, you provide a local text file containing the account tokens you are authorized to use. The CLI reads that file and sends those tokens to the API for the selected task.
+
+A typical file is one token per line:
+
+```text
+TOKEN_1
+TOKEN_2
+TOKEN_3
+```
+
+Then pass it with `--tokens-file`:
+
+```bash
+s7 task join --mode byot --invite discord.gg/abc123 --tokens-file tokens.txt
+```
+
+BYOT is useful when you already have the accounts/tokens and only want Salta7 to perform the task with them. It does **not** use a Stock-mode product for those accounts.
+
+> **Security:** token files are credentials. Never commit them to Git, upload them to issues, paste them into logs, or share them. Keep them local and private. The CLI also warns about overly broad file permissions on macOS/Linux.
+
+`task byot-quote` is only a **cost/requirements estimate** for BYOT. It does not start a task:
+
+```bash
+s7 task byot-quote --tokens-file tokens.txt
+```
+
+### Humanize — profile customization
+
+In S7, **Humanize means changing or randomizing profile fields on the accounts used by a task**. It does not mean rewriting text to “sound human.”
+
+Humanize can configure:
+
+- avatar
+- banner (custom value only)
+- display name
+- bio
+- pronouns
+- HypeSquad house
+
+You can run Humanize as its own task, or attach the same Humanize options to supported Boost/Join tasks. `--random-all` randomizes the fields supported by the API's random library; banner is left unchanged because it is custom-only.
+
+Example:
+
+```bash
+s7 task humanize \
+  --mode stock \
+  --quantity 10 \
+  --random-all \
+  --name "Leo" \
+  --wait
+```
+
+Use Humanize only on accounts you are authorized to manage. The CLI accepts friendly flags and builds the API's Humanize JSON internally, so normal users do not need to write JSON by hand.
+
+''',
+                  "human_old": "## Humanize\n\nHumanize is CLI-native — you do **not** need to write JSON for normal use. Stock mode can also choose a product from `/task/products?tool=humanize` when `--product` is omitted in a terminal.",
+                  "human_new": "## Humanize\n\nAs described above, Humanize is S7's **account profile customization** feature. It can update or randomize avatar, banner, display name, bio, pronouns, and HypeSquad settings. It is CLI-native, so you do **not** need to write JSON for normal use. Stock mode can also choose a product from `/task/products?tool=humanize` when `--product` is omitted in a terminal.",
+                  "quote_old": "## BYOT quote\n\n```bash",
+                  "quote_new": "## BYOT quote\n\nUse this when you want to estimate a BYOT task before running it. It reads the token count/options and returns a quote; **it does not create or execute a task**.\n\n```bash",
+              },
+              "README.ja.md": {
+                  "concept_marker": "## タスク監視",
+                  "concept_heading": "## 用語: Stock / BYOT / Humanize",
+                  "concept": r'''## 用語: Stock / BYOT / Humanize
+
+Boost・Join・Humanizeの各タスクで頻繁に出てくる用語です。最初にここを理解しておくと、`--mode stock` と `--mode byot` の違いが分かりやすくなります。
+
+### Stockモード
+
+**StockモードはSalta7側で用意されている在庫・アカウントを使う方式**です。必要に応じてAPIの商品一覧からproductや数量を選び、自分のtokenファイルは渡しません。
+
+例えばJoinをStockで実行する場合:
+
+```bash
+s7 task join --mode stock --invite discord.gg/abc123 --quantity 10
+```
+
+### BYOT — Bring Your Own Tokens
+
+**BYOTは “Bring Your Own Tokens” の略で、「自分で用意したtokenを持ち込んで使う方式」**です。Salta7のStockを使う代わりに、自分が利用権限を持つアカウントtokenをローカルのテキストファイルに用意し、そのファイルをCLIから渡します。
+
+基本は1行に1tokenです。
+
+```text
+TOKEN_1
+TOKEN_2
+TOKEN_3
+```
+
+`--tokens-file` で指定します。
+
+```bash
+s7 task join --mode byot --invite discord.gg/abc123 --tokens-file tokens.txt
+```
+
+つまり、すでに自分でアカウント/tokenを持っていて、そのtokenを使ってタスクだけ実行したい場合にBYOTを使います。BYOTで渡したアカウントについて、Stockモードの商品を使うわけではありません。
+
+> **重要:** tokenファイルは認証情報そのものです。Gitへcommitしたり、Issueへ添付したり、ログへ貼り付けたり、他人へ共有しないでください。ローカルで秘密に保管してください。macOS/Linuxでは、CLIが緩すぎるファイル権限も警告します。
+
+`task byot-quote` はBYOTタスクの**事前見積もり**です。見積もりを取得するだけで、タスクは開始しません。
+
+```bash
+s7 task byot-quote --tokens-file tokens.txt
+```
+
+### Humanize — プロフィール設定
+
+S7でいう **Humanizeは「文章を人間らしく書き換える機能」ではありません。タスク対象アカウントのプロフィールを設定・ランダム化する機能**です。
+
+設定できる項目:
+
+- Avatar
+- Banner（customのみ）
+- 表示名
+- Bio
+- Pronouns
+- HypeSquad
+
+Humanize単体のタスクとして実行できるほか、対応するBoost/Joinタスクへ同じHumanizeオプションを追加することもできます。`--random-all` はAPIがrandom対応している項目をまとめてランダム化しますが、Bannerはcustomのみなので変更しません。
+
+```bash
+s7 task humanize \
+  --mode stock \
+  --quantity 10 \
+  --random-all \
+  --name "Leo" \
+  --wait
+```
+
+Humanizeは、自分が管理権限を持つアカウントに対してのみ利用してください。CLIが内部でAPI用JSONを組み立てるため、通常はJSONを手書きする必要はありません。
+
+''',
+                  "human_old": "## Humanize\n\nHumanizeはCLIネイティブです。通常利用ではJSONを書く必要はありません。",
+                  "human_new": "## Humanize\n\n上で説明したとおり、HumanizeはS7の**アカウントプロフィール設定機能**です。Avatar・Banner・表示名・Bio・Pronouns・HypeSquadなどを設定またはランダム化できます。CLIネイティブなので、通常利用ではJSONを書く必要はありません。",
+                  "quote_old": "## BYOT見積もり\n\n```bash",
+                  "quote_new": "## BYOT見積もり\n\nBYOTタスクを実行する前に、token数や指定オプションから見積もりを確認するためのコマンドです。**見積もりだけを返し、タスク自体は開始しません。**\n\n```bash",
+              },
+              "README.ko.md": {
+                  "concept_marker": "## 작업 모니터링",
+                  "concept_heading": "## 용어: Stock / BYOT / Humanize",
+                  "concept": r'''## 용어: Stock / BYOT / Humanize
+
+Boost, Join, Humanize 작업에서 자주 나오는 용어입니다. 먼저 이해해 두면 `--mode stock`과 `--mode byot`의 차이를 쉽게 알 수 있습니다.
+
+### Stock 모드
+
+**Stock 모드는 Salta7에서 제공하는 재고/계정을 사용하는 방식**입니다. 필요한 경우 API의 상품 목록에서 product와 수량을 선택하며, 자신의 token 파일을 제공하지 않습니다.
+
+예시:
+
+```bash
+s7 task join --mode stock --invite discord.gg/abc123 --quantity 10
+```
+
+### BYOT — Bring Your Own Tokens
+
+**BYOT는 “Bring Your Own Tokens”의 약자로, 사용자가 직접 준비한 token을 사용하는 방식**입니다. Salta7 Stock 대신, 본인이 사용할 권한이 있는 계정 token을 로컬 텍스트 파일에 준비하고 CLI에 전달합니다.
+
+기본 형식은 한 줄에 token 하나입니다.
+
+```text
+TOKEN_1
+TOKEN_2
+TOKEN_3
+```
+
+`--tokens-file`로 지정합니다.
+
+```bash
+s7 task join --mode byot --invite discord.gg/abc123 --tokens-file tokens.txt
+```
+
+이미 본인의 계정/token을 가지고 있고 해당 token으로 작업만 실행하고 싶을 때 BYOT를 사용합니다. BYOT로 전달한 계정에는 Stock 모드 상품을 사용하는 것이 아닙니다.
+
+> **보안:** token 파일은 인증 정보입니다. Git에 commit하거나 Issue에 첨부하거나 로그에 붙여넣거나 다른 사람과 공유하지 마세요. 로컬에서 비공개로 보관하세요. macOS/Linux에서는 CLI가 너무 넓은 파일 권한도 경고합니다.
+
+`task byot-quote`는 BYOT 작업의 **사전 견적**만 계산합니다. 실제 작업을 시작하지 않습니다.
+
+```bash
+s7 task byot-quote --tokens-file tokens.txt
+```
+
+### Humanize — 프로필 설정
+
+S7의 **Humanize는 텍스트를 “사람처럼” 바꾸는 기능이 아니라, 작업에 사용되는 계정의 프로필 항목을 설정하거나 랜덤화하는 기능**입니다.
+
+설정 가능한 항목:
+
+- Avatar
+- Banner (custom만 지원)
+- 표시 이름
+- Bio
+- Pronouns
+- HypeSquad
+
+Humanize를 독립 작업으로 실행할 수도 있고, 지원되는 Boost/Join 작업에 같은 Humanize 옵션을 추가할 수도 있습니다. `--random-all`은 API가 random을 지원하는 항목을 한 번에 랜덤화하지만 Banner는 custom 전용이므로 변경하지 않습니다.
+
+```bash
+s7 task humanize \
+  --mode stock \
+  --quantity 10 \
+  --random-all \
+  --name "Leo" \
+  --wait
+```
+
+Humanize는 사용자가 관리 권한을 가진 계정에만 사용하세요. CLI가 내부에서 API용 JSON을 생성하므로 일반 사용자는 JSON을 직접 작성할 필요가 없습니다.
+
+''',
+                  "human_old": "## Humanize\n\nHumanize는 CLI 네이티브입니다. 일반 사용에서는 JSON을 직접 작성할 필요가 없습니다.",
+                  "human_new": "## Humanize\n\n위에서 설명한 것처럼 Humanize는 S7의 **계정 프로필 설정 기능**입니다. Avatar, Banner, 표시 이름, Bio, Pronouns, HypeSquad 등을 설정하거나 랜덤화할 수 있습니다. CLI 네이티브이므로 일반 사용에서는 JSON을 직접 작성할 필요가 없습니다.",
+                  "quote_old": "## BYOT 견적\n\n```bash",
+                  "quote_new": "## BYOT 견적\n\nBYOT 작업을 실행하기 전에 token 수와 옵션을 기준으로 예상값을 확인하는 명령입니다. **견적만 반환하며 실제 작업은 시작하지 않습니다.**\n\n```bash",
+              },
+              "README.hi.md": {
+                  "concept_marker": "## Task monitor करना",
+                  "concept_heading": "## शब्दावली: Stock / BYOT / Humanize",
+                  "concept": r'''## शब्दावली: Stock / BYOT / Humanize
+
+ये शब्द Boost, Join और Humanize tasks में बार-बार आते हैं। इन्हें पहले समझ लेने से `--mode stock` और `--mode byot` का अंतर साफ हो जाता है।
+
+### Stock mode
+
+**Stock mode Salta7 द्वारा उपलब्ध कराए गए stock/accounts का उपयोग करता है।** जरूरत होने पर API की product list से product और quantity चुनी जाती है; आपको अपनी token file देने की जरूरत नहीं होती।
+
+उदाहरण:
+
+```bash
+s7 task join --mode stock --invite discord.gg/abc123 --quantity 10
+```
+
+### BYOT — Bring Your Own Tokens
+
+**BYOT का अर्थ “Bring Your Own Tokens” है — यानी अपने tokens खुद देना।** Salta7 Stock का उपयोग करने के बजाय, आप उन account tokens को local text file में रखते हैं जिन्हें उपयोग करने की आपको अनुमति है, और CLI उस file को चुने गए task के लिए API को भेजता है।
+
+सामान्य format: एक line में एक token।
+
+```text
+TOKEN_1
+TOKEN_2
+TOKEN_3
+```
+
+इसे `--tokens-file` से दें:
+
+```bash
+s7 task join --mode byot --invite discord.gg/abc123 --tokens-file tokens.txt
+```
+
+अगर आपके पास पहले से अपने accounts/tokens हैं और आप उन्हीं से task चलाना चाहते हैं, तो BYOT उपयोग करें। BYOT में दिए गए accounts के लिए Stock-mode product उपयोग नहीं किया जाता।
+
+> **Security:** token file credential data है। इसे Git में commit न करें, Issue में upload न करें, logs में paste न करें और किसी से share न करें। इसे local और private रखें। macOS/Linux पर CLI बहुत खुले file permissions के लिए warning भी देता है।
+
+`task byot-quote` केवल BYOT task का **पहले से estimate** देता है। यह task शुरू नहीं करता।
+
+```bash
+s7 task byot-quote --tokens-file tokens.txt
+```
+
+### Humanize — profile customization
+
+S7 में **Humanize का मतलब text को “human-like” बनाना नहीं है। यह task में उपयोग होने वाले accounts की profile fields को set या randomize करने का feature है।**
+
+इससे ये fields बदली जा सकती हैं:
+
+- Avatar
+- Banner (केवल custom)
+- Display name
+- Bio
+- Pronouns
+- HypeSquad
+
+Humanize को अलग task की तरह चला सकते हैं, या supported Boost/Join tasks में वही Humanize options जोड़ सकते हैं। `--random-all` API द्वारा random-supported fields को randomize करता है; Banner custom-only होने के कारण नहीं बदलता।
+
+```bash
+s7 task humanize \
+  --mode stock \
+  --quantity 10 \
+  --random-all \
+  --name "Leo" \
+  --wait
+```
+
+Humanize केवल उन accounts पर उपयोग करें जिन्हें manage करने की आपको अनुमति है। CLI API का Humanize JSON internally बनाता है, इसलिए सामान्य उपयोग में JSON हाथ से लिखना जरूरी नहीं है।
+
+''',
+                  "human_old": "## Humanize\n\nHumanize CLI-native है — सामान्य उपयोग में JSON लिखने की जरूरत नहीं है।",
+                  "human_new": "## Humanize\n\nऊपर बताए अनुसार, Humanize S7 का **account profile customization feature** है। इससे Avatar, Banner, Display name, Bio, Pronouns और HypeSquad जैसी settings set या randomize की जा सकती हैं। यह CLI-native है, इसलिए सामान्य उपयोग में JSON लिखने की जरूरत नहीं है।",
+                  "quote_old": "## BYOT quote\n\n```bash",
+                  "quote_new": "## BYOT quote\n\nBYOT task चलाने से पहले token count और options के आधार पर estimate देखने के लिए इसका उपयोग करें। **यह केवल quote देता है; task create या execute नहीं करता।**\n\n```bash",
+              },
+          }
+
+          for filename, p in patches.items():
+              path = Path(filename)
+              text = path.read_text(encoding="utf-8")
+
+              if p["concept_heading"] not in text:
+                  marker = p["concept_marker"]
+                  if marker not in text:
+                      raise SystemExit(f"missing concept marker in {filename}: {marker}")
+                  text = text.replace(marker, p["concept"] + marker, 1)
+
+              if p["human_old"] in text:
+                  text = text.replace(p["human_old"], p["human_new"], 1)
+
+              if p["quote_old"] in text:
+                  text = text.replace(p["quote_old"], p["quote_new"], 1)
+
+              path.write_text(text, encoding="utf-8")
+          PY
+
+      - name: Commit README improvements
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add README.md README.ja.md README.ko.md README.hi.md
+          git commit -m "Explain BYOT and Humanize concepts"
+          git push origin develop
