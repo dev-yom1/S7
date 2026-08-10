@@ -62,3 +62,51 @@ test('authenticated requests use Bearer auth', async () => {
   await client.balance();
   assert.equal(auth, 'Bearer secret-token');
 });
+
+test('task history sends the documented task query parameter', async () => {
+  let requestedUrl;
+  const client = new Salta7Client({
+    token: 'secret-token',
+    fetchImpl: async (url) => {
+      requestedUrl = new URL(url);
+      return new Response('[]', { status: 200 });
+    },
+  });
+  await client.taskHistory('boost', 25);
+  assert.equal(requestedUrl.pathname, '/task/history');
+  assert.equal(requestedUrl.searchParams.get('task'), 'boost');
+  assert.equal(requestedUrl.searchParams.get('tool'), null);
+  assert.equal(requestedUrl.searchParams.get('limit'), '25');
+});
+
+for (const [status, detail] of [
+  [400, 'Invalid amount'],
+  [401, 'Invalid token'],
+  [403, 'Insufficient balance'],
+  [404, 'Product not found'],
+  [409, 'Insufficient stock'],
+  [429, 'Too many requests'],
+]) {
+  test(`HTTP ${status} preserves documented detail, status, and data`, async () => {
+    const data = { detail };
+    const client = new Salta7Client({
+      token: 'secret-token',
+      retries: 1,
+      fetchImpl: async () => new Response(JSON.stringify(data), {
+        status,
+        headers: { 'content-type': 'application/json' },
+      }),
+    });
+
+    await assert.rejects(
+      () => client.balance(),
+      (error) => {
+        assert.ok(error instanceof CLIError);
+        assert.equal(error.message, `HTTP ${status}: ${detail}`);
+        assert.equal(error.status, status);
+        assert.deepEqual(error.data, data);
+        return true;
+      },
+    );
+  });
+}
