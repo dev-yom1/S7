@@ -16,6 +16,21 @@ s7-node --version
 
 Until the package is published to npm, run it from this repository with `node ./bin/s7.js`.
 
+## npm publishing
+
+Node releases use npm Trusted Publishing with GitHub Actions OIDC. The release workflow is `.github/workflows/publish-node.yml`; it uses a GitHub-hosted Node 24 runner, requests `id-token: write`, validates the package, verifies `node-vX.Y.Z` tags against `node/package.json`, and runs `npm publish` without a long-lived npm token.
+
+Trusted Publishing can only be configured after the package exists on npm. For the initial bootstrap, publish `salta7-cli-node` once from an authorized maintainer account. Then configure the package's npm Trusted Publisher with:
+
+- Provider: GitHub Actions
+- GitHub user/organization: `dev-yom1`
+- Repository: `S7`
+- Workflow filename: `publish-node.yml`
+- Environment: leave unset unless the workflow is later changed to use one
+- Allowed action: `npm publish`
+
+After the trusted publisher is configured, create Node release tags in the form `node-v0.3.2`. The tag version must exactly match `node/package.json`. Trusted Publishing automatically supplies short-lived OIDC credentials and npm provenance; no `NPM_TOKEN` is required for the publish job.
+
 ## Highlights
 
 The Node CLI supports prices, stock, balance, buy, purchase history, task quote/products/active/status/history/items, BYOT quote and execution, Boost, Join, Humanize, `--wait`, `task status --watch`, interactive product selection, a looping interactive menu, `doctor`, update checks and self-update, four UI languages (`en`, `ja`, `ko`, `hi`), JSON/JSONL output, recursive secret masking for human output, retry/backoff, and HTTPS enforcement.
