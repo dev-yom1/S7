@@ -18,9 +18,15 @@ Until the package is published to npm, run it from this repository with `node ./
 
 ## Highlights
 
-The Node CLI supports prices, stock, balance, buy, purchase history, task quote/products/active/status/history/items, BYOT quote and execution, Boost, Join, Humanize, `--wait`, `task status --watch`, interactive product selection, an interactive menu, `doctor`, update checks and self-update, four UI languages (`en`, `ja`, `ko`, `hi`), JSON/JSONL output, recursive secret masking for human output, retry/backoff, and HTTPS enforcement.
+The Node CLI supports prices, stock, balance, buy, purchase history, task quote/products/active/status/history/items, BYOT quote and execution, Boost, Join, Humanize, `--wait`, `task status --watch`, interactive product selection, a looping interactive menu, `doctor`, update checks and self-update, four UI languages (`en`, `ja`, `ko`, `hi`), JSON/JSONL output, recursive secret masking for human output, retry/backoff, and HTTPS enforcement.
 
 Machine-readable modes are intentionally lossless: `--json`, `--jsonl`, and `--compact` serialize the API response without secret masking or other value changes. Human-readable output masks sensitive values unless `--reveal-secrets` is used.
+
+## Updates
+
+The Node CLI checks the npm Registry entry for `salta7-cli-node` and does not use this repository's GitHub Releases for Node version discovery. This keeps Python release tags such as `v2.5.0` independent from Node releases. If the Node package has not been published yet, `s7-node update --check` reports that no public Node package is available.
+
+`--json update --check` performs a check only. `--json update --yes` performs the npm update when one is available and emits the final update result as JSON.
 
 ## Security
 
