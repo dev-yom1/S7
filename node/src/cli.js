@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs/promises';
 import process, { stdin as defaultStdin, stdout as defaultStdout } from 'node:process';
 import readline from 'node:readline/promises';
+import { emitKeypressEvents } from 'node:readline';
 import { CLIError, DEFAULT_BASE_URL, Salta7Client, validateBaseUrl } from './client.js';
 import { buildHumanizeConfig } from './humanize.js';
 import { setLanguage, t } from './i18n.js';
@@ -122,6 +123,56 @@ async function confirm(runtime, question) {
   return ['y', 'yes', 'はい', 'h', '예', '네', 'हाँ', 'हां'].includes(answer);
 }
 function warn(io, msg) { (io.warn ?? io.error ?? io.log).call(io, `${t('warning')}: ${msg}`); }
+function canArrowSelect(runtime) {
+  return !runtime.prompt && Boolean(runtime.stdin?.isTTY && runtime.stdout?.isTTY && typeof runtime.stdin?.setRawMode === 'function');
+}
+async function arrowSelect(runtime, items, { title, initial = 0 } = {}) {
+  if (!items.length) throw new CLIError(t('invalidChoice'));
+  if (runtime.select) return runtime.select(items, { title, initial });
+  if (!canArrowSelect(runtime)) return null;
+  const input = runtime.stdin;
+  const output = runtime.stdout;
+  let index = Math.max(0, Math.min(initial, items.length - 1));
+  emitKeypressEvents(input);
+  const wasRaw = Boolean(input.isRaw);
+  const wasPaused = typeof input.isPaused === 'function' ? input.isPaused() : false;
+  const render = (first = false) => {
+    if (!first) output.write(`\x1b[${items.length}F`);
+    for (let i = 0; i < items.length; i += 1) {
+      const marker = i === index ? '❯' : ' ';
+      output.write(`\x1b[2K${marker} ${items[i]}\n`);
+    }
+  };
+  if (title) output.write(`${title}\n`);
+  render(true);
+  input.setRawMode(true);
+  input.resume();
+  return new Promise((resolve, reject) => {
+    const cleanup = () => {
+      input.off('keypress', onKey);
+      input.setRawMode(wasRaw);
+      if (wasPaused) input.pause();
+    };
+    const finish = (value) => { cleanup(); resolve(value); };
+    const onKey = (_str, key = {}) => {
+      if (key.ctrl && key.name === 'c') { cleanup(); reject(Object.assign(new Error('SIGINT'), { code: 'SIGINT' })); return; }
+      if (key.name === 'up' || key.name === 'k') { index = (index - 1 + items.length) % items.length; render(); return; }
+      if (key.name === 'down' || key.name === 'j') { index = (index + 1) % items.length; render(); return; }
+      if (key.name === 'home') { index = 0; render(); return; }
+      if (key.name === 'end') { index = items.length - 1; render(); return; }
+      if (key.name === 'return' || key.name === 'enter') { finish(index); return; }
+      if (key.name === 'escape') finish(-1);
+    };
+    input.on('keypress', onKey);
+  });
+}
+async function choose(runtime, items, { title, prompt = '> ', initial = 0 } = {}) {
+  const selected = await arrowSelect(runtime, items, { title, initial });
+  if (selected !== null) return selected;
+  if (title) runtime.output?.(title);
+  const n = Number(await ask(runtime, prompt));
+  return Number.isInteger(n) && n >= 1 && n <= items.length ? n - 1 : -1;
+}
 async function tokenPermissionWarning(file, io) {
   if (process.platform === 'win32') return;
   try {
@@ -161,7 +212,13 @@ async function chooseProduct(client, tool, runtime, io) {
   const data = tool ? await client.taskProducts(tool) : await client.prices();
   const entries = productEntries(data);
   if (!entries.length) throw new CLIError(t('noProducts'));
-  io.log(tool ? t('common.select_task_product') : t('common.select_product'));
+  const title = tool ? t('common.select_task_product') : t('common.select_product');
+  const selected = await arrowSelect(runtime, entries.map((e) => e.name), { title });
+  if (selected !== null) {
+    if (selected < 0) throw new CLIError(t('invalidChoice'));
+    return entries[selected].name;
+  }
+  io.log(title);
   entries.forEach((e, i) => io.log(`  ${i + 1}. ${e.name}`));
   const n = Number(await ask(runtime, '> '));
   if (!Number.isInteger(n) || n < 1 || n > entries.length) throw new CLIError(t('invalidChoice'));
@@ -261,11 +318,17 @@ async function interactiveMain(client, global, runtime, io) {
     ['task join', 'menu.join'], ['task humanize', 'menu.humanize'], ['doctor', 'menu.doctor'], ['exit', 'menu.exit'],
   ];
   while (true) {
-    io.log(`\n${t('menu.title')}`);
-    menu.forEach(([, label], i) => io.log(`  ${i + 1}. ${t(label)}`));
-    const choice = Number(await ask(runtime, `${t('menu.prompt')}: `));
-    if (!Number.isInteger(choice) || choice < 1 || choice > menu.length) { warn(io, t('invalidChoice')); continue; }
-    const selected = menu[choice - 1][0];
+    const labels = menu.map(([, label]) => t(label));
+    const selectedIndex = await arrowSelect(runtime, labels, { title: `\n${t('menu.title')}` });
+    let choice = selectedIndex;
+    if (choice === null) {
+      io.log(`\n${t('menu.title')}`);
+      menu.forEach(([, label], i) => io.log(`  ${i + 1}. ${t(label)}`));
+      const numeric = Number(await ask(runtime, `${t('menu.prompt')}: `));
+      choice = Number.isInteger(numeric) && numeric >= 1 && numeric <= menu.length ? numeric - 1 : -1;
+    }
+    if (choice < 0 || choice >= menu.length) { warn(io, t('invalidChoice')); continue; }
+    const selected = menu[choice][0];
     if (selected === 'exit') return 0;
     await menuCommand(selected, client, global, runtime, io);
   }
@@ -328,93 +391,69 @@ export async function run(argv = process.argv.slice(2), io = console, runtime = 
       const info = await checkUpdate(VERSION);
       if (options.check) {
         if (jsonMode(global)) output(info);
-        else if (!info.releaseFound) io.log(t('updateNone'));
-        else if (info.updateAvailable) io.log(t('updateAvailable', { current: VERSION, latest: info.latestVersion }));
-        else io.log(t('updateCurrent', { version: VERSION }));
-        return 0;
+        else io.log(info.updateAvailable ? t('updateAvailable', { version: info.latestVersion }) : t('upToDate', { version: VERSION }));
+      } else if (!info.updateAvailable) io.log(t('upToDate', { version: VERSION }));
+      else {
+        if (!options.yes && !options.y) {
+          if (!tty(runtime)) throw new CLIError(t('updateTty'));
+          if (!await confirm(runtime, t('updateConfirm', { version: info.latestVersion }))) { io.log(t('cancelled')); return 0; }
+        }
+        const result = await install(info.latestVersion);
+        if (jsonMode(global)) output(result); else io.log(t('updateInstalled', { version: result.version }));
       }
-      if (!info.releaseFound) { if (jsonMode(global)) output(info); else io.log(t('updateNone')); return 0; }
-      if (!info.updateAvailable) { if (jsonMode(global)) output(info); else io.log(t('updateCurrent', { version: VERSION })); return 0; }
-      if (!options.yes && !options.y) {
-        if (jsonMode(global)) throw new CLIError(t('jsonUpdateYes'));
-        io.log(t('updateAvailable', { current: VERSION, latest: info.latestVersion }));
-        if (!tty(runtime)) throw new CLIError(t('updateTty'));
-        if (!await confirm(runtime, t('updateConfirm', { latest: info.latestVersion }))) return 0;
-      }
-      const installed = await install(info.latestVersion);
-      if (jsonMode(global)) output({ ...info, installed: true, installation: installed });
-      else io.log(t('updateDone', { latest: info.latestVersion }));
     }
     else if (command === 'task') {
       const [sub, ...subArgs] = args;
-      if (!sub) throw new CLIError(t('unknownTask', { command: '' }));
       const { options, positional } = parseCommandOptions(subArgs);
+      if (!sub) throw new CLIError(t('taskSubcommandRequired'));
       if (sub === 'quote') { noExtra(positional, 0); output(await client.taskQuote(), 'title.task_quote'); }
-      else if (sub === 'products') {
-        noExtra(positional, 0);
-        if (options.tool && !['join', 'humanize'].includes(options.tool)) throw new CLIError(t('toolJoinHumanize'));
-        output(await client.taskProducts(options.tool), 'title.task_products');
-      }
-      else if (sub === 'active') { noExtra(positional, 0); output(await client.taskActive(), 'title.active_task'); }
+      else if (sub === 'products') { noExtra(positional, 0); output(await client.taskProducts(options.tool), 'title.task_products'); }
+      else if (sub === 'active') { noExtra(positional, 0); output(await client.taskActive(), 'title.active_tasks'); }
       else if (sub === 'status') {
-        noExtra(positional, 1); const id = positional[0]; if (!id) throw new CLIError(t('jobIdRequired'));
-        const statusOutput = (value) => output(value, 'title.task_status');
-        if (options.watch) await waitForJob(client, id, Number(options.interval ?? 10), statusOutput);
-        else statusOutput(await client.taskStatus(id));
+        noExtra(positional, 1); if (!positional[0]) throw new CLIError(t('jobIdRequired'));
+        if (options.watch) await waitForJob(client, positional[0], Number(options.interval ?? 10), (v) => output(v, 'title.task_status'));
+        else output(await client.taskStatus(positional[0]), 'title.task_status');
       }
-      else if (sub === 'history') {
-        noExtra(positional, 0); const limit = integer(options.limit, 10);
-        if (!Number.isInteger(limit) || limit < 1 || limit > 100) throw new CLIError(t('limitRange'));
-        if (options.tool && !['boost', 'join', 'humanize'].includes(options.tool)) throw new CLIError(t('toolTaskHistory'));
-        output(await client.taskHistory(options.tool, limit), 'title.task_history');
-      }
-      else if (sub === 'items') { noExtra(positional, 1); if (!positional[0]) throw new CLIError(t('jobIdRequired')); output(await client.taskItems(positional[0], Boolean(options.byot)), 'title.task_items'); }
+      else if (sub === 'history') { noExtra(positional, 0); output(await client.taskHistory(options.tool, integer(options.limit, 20)), 'title.task_history'); }
+      else if (sub === 'items') { noExtra(positional, 1); if (!positional[0]) throw new CLIError(t('jobIdRequired')); output(await client.taskItems(positional[0], { byot: options.byot }), 'title.task_items'); }
       else if (sub === 'byot-quote') {
-        noExtra(positional, 0); const n = integer(options['boosts-needed'], 0); if (!Number.isInteger(n) || n < 0) throw new CLIError(t('boostsNegative'));
-        output(await client.taskByotQuote(await loadTokens(options['tokens-file'], io), n, Boolean(options.humanize)), 'title.byot_quote');
+        noExtra(positional, 0); const tokens = await loadTokens(options['tokens-file'], io);
+        output(await client.taskByotQuote({ tokens, boostsNeeded: integer(options['boosts-needed'], 0), humanize: options.humanize }), 'title.byot_quote');
       }
-      else if (sub === 'boost') {
-        noExtra(positional, 0); const mode = options.mode ?? 'stock';
-        if (!['stock', 'byot'].includes(mode) || !options.invite) throw new CLIError(t('boostModeInvite'));
-        const payload = { tool: 'boost', mode, invite: options.invite };
-        if (mode === 'stock') { const boosts = integer(options.boosts); if (!Number.isInteger(boosts) || boosts < 1 || boosts > 40) throw new CLIError(t('boostStock')); payload.boosts = boosts; }
-        else { payload.tokens = await loadTokens(options['tokens-file'], io); const n = integer(options['boosts-needed'], 0); if (!Number.isInteger(n) || n < 0) throw new CLIError(t('boostsNegative')); payload.boosts_needed = n; }
-        const h = await buildHumanizeConfig(humanizeValues(options)); if (h) payload.humanize = h;
-        await maybeWait(client, await client.taskCreate(payload), options, (value) => output(value, 'title.boost'));
-      }
-      else if (sub === 'join') {
-        noExtra(positional, 0); const mode = options.mode ?? 'stock'; if (!['stock', 'byot'].includes(mode) || !options.invite) throw new CLIError(t('joinModeInvite'));
-        const payload = { tool: 'join', mode, invite: options.invite };
-        if (mode === 'stock') {
-          let product = options.product; let q = integer(options.quantity);
-          if (!product && tty(runtime) && !jsonMode(global)) product = await chooseProduct(client, 'join', runtime, io);
-          if (q === undefined && tty(runtime) && !jsonMode(global)) q = await askInt(runtime, t('common.quantity'), 1, 100);
-          if (!product || !Number.isInteger(q) || q < 1 || q > 100) throw new CLIError(t('joinStock'));
-          Object.assign(payload, { product, quantity: q });
-        } else payload.tokens = await loadTokens(options['tokens-file'], io);
-        const h = await buildHumanizeConfig(humanizeValues(options)); if (h) payload.humanize = h;
-        await maybeWait(client, await client.taskCreate(payload), options, (value) => output(value, 'title.join'));
-      }
-      else if (sub === 'humanize') {
-        noExtra(positional, 0); const mode = options.mode ?? 'stock'; if (!['stock', 'byot'].includes(mode)) throw new CLIError(t('humanizeMode'));
-        const payload = { tool: 'humanize', mode, humanize: await buildHumanizeConfig(humanizeValues(options), { required: true }) };
-        if (mode === 'stock') {
-          let product = options.product; let q = integer(options.quantity);
-          if (!product && tty(runtime) && !jsonMode(global)) product = await chooseProduct(client, 'humanize', runtime, io);
-          if (q === undefined && tty(runtime) && !jsonMode(global)) q = await askInt(runtime, t('common.quantity'), 1, 100);
-          if (!product || !Number.isInteger(q) || q < 1 || q > 100) throw new CLIError(t('humanizeStock'));
-          Object.assign(payload, { product, quantity: q });
-        } else payload.tokens = await loadTokens(options['tokens-file'], io);
-        await maybeWait(client, await client.taskCreate(payload), options, (value) => output(value, 'title.humanize'));
-      }
-      else throw new CLIError(t('unknownTask', { command: sub }));
-    }
-    else throw new CLIError(t('unknownCommand', { command }));
+      else if (['boost', 'join', 'humanize'].includes(sub)) {
+        noExtra(positional, 0);
+        const mode = options.mode;
+        if (!['stock', 'byot'].includes(mode)) throw new CLIError(t('modeRequired'));
+        const tokens = mode === 'byot' ? await loadTokens(options['tokens-file'], io) : undefined;
+        let humanize;
+        try { humanize = await buildHumanizeConfig(humanizeValues(options)); } catch (error) { throw new CLIError(error.message); }
+        let result;
+        if (sub === 'boost') {
+          if (!options.invite) throw new CLIError(t('inviteRequired'));
+          if (mode === 'stock') {
+            let product = options.product;
+            if (!product && tty(runtime) && !jsonMode(global)) product = await chooseProduct(client, 'boost', runtime, io);
+            result = await client.taskBoost({ mode, invite: options.invite, boosts: integer(options.boosts, 2), product, humanize });
+          } else result = await client.taskBoost({ mode, invite: options.invite, tokens, boostsNeeded: integer(options['boosts-needed'], 0), humanize });
+        } else if (sub === 'join') {
+          if (!options.invite) throw new CLIError(t('inviteRequired'));
+          let product = options.product;
+          if (mode === 'stock' && !product && tty(runtime) && !jsonMode(global)) product = await chooseProduct(client, 'join', runtime, io);
+          result = await client.taskJoin({ mode, invite: options.invite, tokens, product, humanize });
+        } else {
+          let product = options.product;
+          let quantity = integer(options.quantity, undefined);
+          if (mode === 'stock' && !product && tty(runtime) && !jsonMode(global)) product = await chooseProduct(client, 'humanize', runtime, io);
+          if (mode === 'stock' && quantity === undefined && tty(runtime) && !jsonMode(global)) quantity = await askInt(runtime, t('common.quantity'), 1, 100);
+          result = await client.taskHumanize({ mode, tokens, product, quantity, humanize });
+        }
+        await maybeWait(client, result, options, (v) => output(v, 'title.task_status'));
+      } else throw new CLIError(t('unknownTask', { command: sub }));
+    } else throw new CLIError(t('unknownCommand', { command }));
     return 0;
   } catch (error) {
-    io.error(`${t('error')}: ${error instanceof Error ? error.message : String(error)}`);
+    if (error?.code === 'SIGINT') { io.error(''); return 130; }
+    io.error(`${t('error')}: ${error.message}`);
     return 1;
   }
 }
-
-export const _test = { parseArgs, parseCommandOptions, waitForJob, tokenPermissionWarning, runDoctor, productEntries };
