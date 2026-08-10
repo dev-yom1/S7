@@ -8,7 +8,12 @@ const MAX_RETRY_DELAY_MS = 10_000;
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export class CLIError extends Error {
-  constructor(message) { super(message); this.name = 'CLIError'; }
+  constructor(message, { status, data } = {}) {
+    super(message);
+    this.name = 'CLIError';
+    this.status = status;
+    this.data = data;
+  }
 }
 
 function isLoopback(hostname) {
@@ -77,7 +82,7 @@ export class Salta7Client {
           continue;
         }
         const detail = typeof payload === 'object' && payload ? (payload.detail ?? payload.error ?? JSON.stringify(payload)) : String(payload ?? '');
-        throw new CLIError(`HTTP ${response.status}: ${detail}`);
+        throw new CLIError(`HTTP ${response.status}: ${detail}`, { status: response.status, data: payload });
       } catch (error) {
         if (error instanceof CLIError) throw error;
         lastError = error;
@@ -101,7 +106,7 @@ export class Salta7Client {
   taskProducts(tool) { return this.request('GET', '/task/products', { auth: true, query: tool ? { tool } : undefined }); }
   taskActive() { return this.request('GET', '/task/active', { auth: true }); }
   taskStatus(jobId) { return this.request('GET', '/task/status', { auth: true, query: { job_id: jobId } }); }
-  taskHistory(tool, limit = 10) { return this.request('GET', '/task/history', { auth: true, query: { tool, limit } }); }
+  taskHistory(tool, limit = 10) { return this.request('GET', '/task/history', { auth: true, query: { task: tool, limit } }); }
   taskItems(jobId, byot = false) { return this.request('GET', byot ? '/task/byot/items' : '/task/items', { auth: true, query: { job_id: jobId } }); }
   taskByotQuote(tokens, boostsNeeded = 0, humanize = false) { return this.request('POST', '/task/byot/quote', { auth: true, body: { tokens, boosts_needed: boostsNeeded, humanize }, retryable: false }); }
   taskCreate(payload) { return this.request('POST', '/task/create', { auth: true, body: payload, retryable: false }); }
