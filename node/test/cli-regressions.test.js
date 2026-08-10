@@ -57,5 +57,7 @@ test('JSON update --yes installs and emits one final JSON result', async () => {
   assert.equal(code, 0);
   assert.equal(installed, '0.3.2');
   assert.equal(lines.length, 1);
-  assert.match(lines[0], /"installed":true/);
+  const result = JSON.parse(lines[0]);
+  assert.equal(result.installed, true);
+  assert.equal(result.installation.version, '0.3.2');
 });
