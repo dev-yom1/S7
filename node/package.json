@@ -4,6 +4,7 @@
   "description": "Node.js CLI client for the Salta7 Store API",
   "type": "module",
   "engines": { "node": ">=22" },
+  "packageManager": "npm@11.5.1",
   "bin": { "s7-node": "./bin/s7.js" },
   "files": ["bin", "src", "README.md"],
   "repository": { "type": "git", "url": "git+https://github.com/dev-yom1/S7.git", "directory": "node" },
