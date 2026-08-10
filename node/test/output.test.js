@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { setLanguage } from '../src/i18n.js';
-import { printResult, sanitize } from '../src/output.js';
+import { printLogo, printMenuHeader, printResult, sanitize } from '../src/output.js';
 
 test('sanitize masks nested secrets for human output', () => {
   setLanguage('en');
@@ -21,6 +21,26 @@ test('JSONL output preserves API response exactly', () => {
   printResult(value, { jsonl: true }, { log: (line) => lines.push(line) });
   assert.equal(lines.length, 1);
   assert.deepEqual(JSON.parse(lines[0]), value);
+});
+
+test('full logo matches Python CLI branding and localizes tagline', () => {
+  setLanguage('ja');
+  const lines = [];
+  printLogo('0.3.5', { noColor: true }, { log: (line) => lines.push(line), isTTY: false });
+  const text = lines.join('\n');
+  assert.match(text, /_____  _____/);
+  assert.match(text, /S A L T A 7   C L I  v0\.3\.5/);
+  assert.match(text, /Salta7ツールへ素早くアクセス/);
+  assert.doesNotMatch(text, /\x1b\[/);
+});
+
+test('menu header has CLI-style branding', () => {
+  setLanguage('ja');
+  const lines = [];
+  printMenuHeader('0.3.5', { noColor: true }, { log: (line) => lines.push(line), isTTY: false });
+  const text = lines.join('\n');
+  assert.match(text, /⚡ S7 • 何をしますか？ v0\.3\.5/);
+  assert.match(text, /────/);
 });
 
 test('Japanese human output uses translated banner and field labels', () => {
