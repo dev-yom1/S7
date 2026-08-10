@@ -1,15 +1,14 @@
 {
   "name": "salta7-cli-node",
   "version": "0.2.0",
-  "private": true,
   "description": "Node.js CLI client for the Salta7 Store API",
   "type": "module",
-  "engines": {
-    "node": ">=22"
-  },
-  "bin": {
-    "s7-node": "./bin/s7.js"
-  },
+  "engines": { "node": ">=22" },
+  "bin": { "s7-node": "./bin/s7.js" },
+  "files": ["bin", "src", "README.md"],
+  "repository": { "type": "git", "url": "git+https://github.com/dev-yom1/S7.git", "directory": "node" },
+  "bugs": { "url": "https://github.com/dev-yom1/S7/issues" },
+  "homepage": "https://github.com/dev-yom1/S7#readme",
   "scripts": {
     "test": "node --test",
     "check": "node --check bin/s7.js && node --check src/client.js && node --check src/cli.js && node --check src/humanize.js && node --check src/i18n.js && node --check src/output.js && node --check src/updater.js"

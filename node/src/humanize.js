@@ -8,6 +8,20 @@ const HUMANIZE_FIELDS = new Set(['avatar', 'banner', 'name', 'bio', 'pronouns', 
 const HYPESQUAD = new Map([['1','1'], ['bravery','1'], ['2','2'], ['brilliance','2'], ['3','3'], ['balance','3']]);
 const MIME_BY_EXT = new Map([['.png','image/png'], ['.jpg','image/jpeg'], ['.jpeg','image/jpeg'], ['.gif','image/gif'], ['.webp','image/webp']]);
 
+function rejectMultiple(values, names, label) {
+  const present = names.filter((name) => values[name] !== undefined && values[name] !== false && values[name] !== null);
+  if (present.length > 1) throw new CLIError(`${label} options are mutually exclusive: ${present.join(', ')}`);
+}
+
+function validateExclusiveOptions(values) {
+  rejectMultiple(values, ['randomAvatar', 'avatarUrl', 'avatarFile'], 'avatar');
+  rejectMultiple(values, ['bannerFile', 'bannerData'], 'banner');
+  rejectMultiple(values, ['randomName', 'name'], 'name');
+  rejectMultiple(values, ['randomBio', 'bio'], 'bio');
+  rejectMultiple(values, ['randomPronouns', 'pronouns'], 'pronouns');
+  rejectMultiple(values, ['randomHypesquad', 'hypesquad'], 'hypesquad');
+}
+
 export function normalizeHypesquad(value) {
   const normalized = HYPESQUAD.get(String(value).trim().toLowerCase());
   if (!normalized) throw new CLIError(t('hypesquadInvalid'));
@@ -55,6 +69,7 @@ async function loadLegacy(value) {
 }
 
 export async function buildHumanizeConfig(values, { required = false } = {}) {
+  validateExclusiveOptions(values);
   const config = { ...(await loadLegacy(values.humanizeJson)) };
   if (values.randomAll) for (const field of RANDOM_FIELDS) config[field] = { source: 'random' };
 

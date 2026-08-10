@@ -1,31 +1,36 @@
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
-import process from 'node:process';
-
-const execFileAsync = promisify(execFile);
 const REPO = 'dev-yom1/S7';
 const VERSION_RE = /^v?(\d+)\.(\d+)\.(\d+)$/;
+export const UPDATE_TIMEOUT_MS = 10_000;
 
 export function parseVersion(version) {
   const match = String(version).trim().match(VERSION_RE);
-  if (!match) return null;
-  return match.slice(1).map(Number);
+  return match ? match.slice(1).map(Number) : null;
 }
 
 export function isNewerVersion(current, latest) {
   const a = parseVersion(current);
   const b = parseVersion(latest);
   if (!a || !b) return false;
-  for (let i = 0; i < 3; i += 1) {
-    if (b[i] !== a[i]) return b[i] > a[i];
-  }
+  for (let i = 0; i < 3; i += 1) if (b[i] !== a[i]) return b[i] > a[i];
   return false;
 }
 
-export async function checkForUpdate(currentVersion, fetchImpl = globalThis.fetch) {
-  const response = await fetchImpl(`https://api.github.com/repos/${REPO}/releases/latest`, {
-    headers: { accept: 'application/vnd.github+json', 'user-agent': 'salta7-cli-node' },
-  });
+export async function checkForUpdate(currentVersion, fetchImpl = globalThis.fetch, timeoutMs = UPDATE_TIMEOUT_MS) {
+  if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) throw new Error('Update check timeout must be greater than 0.');
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  let response;
+  try {
+    response = await fetchImpl(`https://api.github.com/repos/${REPO}/releases/latest`, {
+      headers: { accept: 'application/vnd.github+json', 'user-agent': 'salta7-cli-node' },
+      signal: controller.signal,
+    });
+  } catch (error) {
+    if (error?.name === 'AbortError') throw new Error(`GitHub update check timed out after ${timeoutMs}ms.`);
+    throw error;
+  } finally {
+    clearTimeout(timer);
+  }
   if (response.status === 404) return { releaseFound: false, updateAvailable: false, currentVersion };
   if (!response.ok) throw new Error(`GitHub update check failed: HTTP ${response.status}`);
   const release = await response.json();
@@ -38,7 +43,5 @@ export async function checkForUpdate(currentVersion, fetchImpl = globalThis.fetc
 
 export async function installUpdate(tagName) {
   if (!parseVersion(tagName)) throw new Error('Refusing to install an invalid release tag.');
-  const source = `https://github.com/${REPO}/archive/refs/tags/${tagName.startsWith('v') ? tagName : `v${tagName}`}.tar.gz`;
-  await execFileAsync(process.execPath, [process.env.npm_execpath ?? ''], { timeout: 1000 }).catch(() => {});
-  return { source, note: 'Node package publication is not configured yet; install from the release archive after the Node package is published.' };
+  return { tagName, note: 'Automatic installation is not enabled until the Node package is published.' };
 }
