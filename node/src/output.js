@@ -5,6 +5,11 @@ const ANSI = {
   reset: '\x1b[0m', bold: '\x1b[1m', dim: '\x1b[2m', red: '\x1b[31m', green: '\x1b[32m', yellow: '\x1b[33m', cyan: '\x1b[36m', brightCyan: '\x1b[96m', white: '\x1b[97m',
 };
 const PRIORITY = ['title', 'name', 'product', 'account', 'price', 'amount', 'quantity', 'status', 'id', 'format', 'stock', 'warranty', 'description', 'details', 'admin_only'];
+const LOGO = String.raw`   _____  _____
+  / ___/ /__  /
+  \__ \    / /
+ ___/ /   / /
+/____/   /_/`;
 
 function mask(value) {
   const text = String(value ?? '');
@@ -32,6 +37,13 @@ function paint(text, styles, enabled) {
   if (!enabled || !styles?.length) return rendered;
   return `${styles.map((s) => ANSI[s] ?? '').join('')}${rendered}${ANSI.reset}`;
 }
+export function printLogo(version, { noColor = false } = {}, io = console) {
+  const enabled = colorEnabled(noColor, io);
+  io.log(paint(LOGO, ['bold', 'brightCyan'], enabled));
+  io.log(`  ${paint('S A L T A 7   C L I', ['bold', 'white'], enabled)}  ${paint(`v${version}`, ['dim'], enabled)}`);
+  io.log(`  ${paint(t('logo.tagline'), ['dim'], enabled)}`);
+  io.log('');
+}
 function timeText() {
   return new Date().toLocaleTimeString('en-GB', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
 }
@@ -56,6 +68,11 @@ function logLine(io, icon, message, enabled) {
 }
 function banner(io, title, enabled) {
   io.log(`${paint('⚡ S7', ['bold', 'brightCyan'], enabled)} ${paint('•', ['dim'], enabled)} ${paint(title, ['bold'], enabled)}\n`);
+}
+export function printMenuHeader(version, { noColor = false } = {}, io = console) {
+  const enabled = colorEnabled(noColor, io);
+  io.log(`${paint('⚡ S7', ['bold', 'brightCyan'], enabled)} ${paint('•', ['dim'], enabled)} ${paint(t('menu.title'), ['bold'], enabled)} ${paint(`v${version}`, ['dim'], enabled)}`);
+  io.log(paint('─'.repeat(42), ['dim'], enabled));
 }
 function renderFields(io, obj, enabled, indent = 11) {
   const entries = orderedEntries(obj);
