@@ -8,7 +8,7 @@ import { setLanguage, t } from './i18n.js';
 import { printResult } from './output.js';
 import { checkForUpdate, installUpdate } from './updater.js';
 
-export const VERSION = '0.3.2';
+export const VERSION = '0.3.5';
 const TERMINAL = new Set(['completed', 'partial', 'failed', 'cancelled', 'canceled']);
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 

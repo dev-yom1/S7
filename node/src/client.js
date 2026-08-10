@@ -58,7 +58,7 @@ export class Salta7Client {
   }
 
   headers(auth = false) {
-    const headers = { 'user-agent': 'salta7-cli-node/0.3.2', accept: 'application/json' };
+    const headers = { 'user-agent': 'salta7-cli-node/0.3.5', accept: 'application/json' };
     if (auth) { if (!this.token) throw new CLIError(t('tokenRequired')); headers.authorization = `Bearer ${this.token}`; }
     return headers;
   }
