@@ -14,22 +14,18 @@ npm install --global salta7-cli-node
 s7-node --version
 ```
 
-Until the package is published to npm, run it from this repository with `node ./bin/s7.js`.
-
 ## npm publishing
 
 Node releases use npm Trusted Publishing with GitHub Actions OIDC. The release workflow is `.github/workflows/publish-node.yml`; it uses a GitHub-hosted Node 24 runner, requests `id-token: write`, validates the package, verifies `node-vX.Y.Z` tags against `node/package.json`, and runs `npm publish` without a long-lived npm token.
 
-Trusted Publishing can only be configured after the package exists on npm. For the initial bootstrap, publish `salta7-cli-node` once from an authorized maintainer account. Then configure the package's npm Trusted Publisher with:
+The package's npm Trusted Publisher is configured for:
 
 - Provider: GitHub Actions
 - GitHub user/organization: `dev-yom1`
 - Repository: `S7`
 - Workflow filename: `publish-node.yml`
-- Environment: leave unset unless the workflow is later changed to use one
-- Allowed action: `npm publish`
 
-After the trusted publisher is configured, create Node release tags in the form `node-v0.3.2`. The tag version must exactly match `node/package.json`. Trusted Publishing automatically supplies short-lived OIDC credentials and npm provenance; no `NPM_TOKEN` is required for the publish job.
+Create Node release tags in the form `node-v0.3.2`. The tag version must exactly match `node/package.json`. Trusted Publishing supplies short-lived OIDC credentials and npm provenance; no `NPM_TOKEN` is required for the publish job.
 
 ## Highlights
 
@@ -39,7 +35,7 @@ Machine-readable modes are intentionally lossless: `--json`, `--jsonl`, and `--c
 
 ## Updates
 
-The Node CLI checks the npm Registry entry for `salta7-cli-node` and does not use this repository's GitHub Releases for Node version discovery. This keeps Python release tags such as `v2.5.0` independent from Node releases. If the Node package has not been published yet, `s7-node update --check` reports that no public Node package is available.
+The Node CLI checks the npm Registry entry for `salta7-cli-node` and does not use this repository's GitHub Releases for Node version discovery. This keeps Python release tags such as `v2.5.0` independent from Node releases.
 
 `--json update --check` performs a check only. `--json update --yes` performs the npm update when one is available and emits the final update result as JSON.
 
