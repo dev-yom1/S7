@@ -25,7 +25,7 @@ The package's npm Trusted Publisher is configured for:
 - Repository: `S7`
 - Workflow filename: `publish-node.yml`
 
-Create Node release tags in the form `node-v0.3.2`. The tag version must exactly match `node/package.json`. Trusted Publishing supplies short-lived OIDC credentials and npm provenance; no `NPM_TOKEN` is required for the publish job.
+Publish is tag-driven only. After merging a version bump through `develop` into `main`, create a Node release tag such as `node-v0.3.3`. The tag version must exactly match both `node/package.json` and the CLI version. Trusted Publishing supplies short-lived OIDC credentials and npm provenance; no `NPM_TOKEN` is required for the publish job.
 
 ## Highlights
 
