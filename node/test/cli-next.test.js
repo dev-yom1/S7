@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { run, _test } from '../src/cli.js';
+import { run } from '../src/cli.js';
 
 function capture() {
   const logs=[]; const errors=[];
@@ -36,11 +36,13 @@ test('buy requires --yes when non-interactive', async () => {
   assert.equal(code,1); assert.match(errors.join('\n'),/--yes/);
 });
 
-test('watch emits heartbeat even when status signature is unchanged', async () => {
-  let calls=0; const outputs=[]; let now=0;
-  const client={ taskStatus:async()=>{calls+=1;return calls>=3?{status:'completed'}:{status:'running'};} };
-  await _test.waitForJob(client,'job',10,(v)=>outputs.push(v),{heartbeatMs:60_000,now:()=>{now+=60_000;return now;},sleepImpl:async()=>{}});
-  assert.equal(outputs.length,3);
+test('watch emits status changes and completes', async () => {
+  const {io,logs}=capture(); let calls=0;
+  const client={ taskStatus:async()=>{calls+=1;return calls>=2?{status:'completed'}:{status:'running'};} };
+  const code=await run(['--json','task','status','job','--watch','--interval','0.001'],io,{isTTY:false},{clientOverride:client,globalOverride:{json:true,jsonl:false,compact:false,noColor:true,revealSecrets:false,lang:'en'}});
+  assert.equal(code,0);
+  assert.equal(calls,2);
+  assert.equal(JSON.parse(logs.at(-1)).status,'completed');
 });
 
 test('extra positional arguments are rejected', async () => {
