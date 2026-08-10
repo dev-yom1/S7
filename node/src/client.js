@@ -8,14 +8,8 @@ const MAX_RETRY_DELAY_MS = 10_000;
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export class CLIError extends Error {
-  constructor(message, { status, data } = {}) {
-    super(message);
-    this.name = 'CLIError';
-    this.status = status;
-    this.data = data;
-  }
+  constructor(message, { status, data } = {}) { super(message); this.name = 'CLIError'; this.status = status; this.data = data; }
 }
-
 function isLoopback(hostname) {
   if (!hostname) return false;
   if (hostname.toLowerCase() === 'localhost') return true;
@@ -23,7 +17,6 @@ function isLoopback(hostname) {
   if (net.isIP(hostname) === 6) return hostname === '::1';
   return false;
 }
-
 export function validateBaseUrl(baseUrl, { allowInsecureHttp = false } = {}) {
   let parsed;
   try { parsed = new URL(baseUrl); } catch { throw new CLIError('Invalid API base URL.'); }
@@ -37,7 +30,6 @@ export function validateBaseUrl(baseUrl, { allowInsecureHttp = false } = {}) {
   }
   throw new CLIError('Invalid API base URL.');
 }
-
 export function retryDelayMs(retryAfter, attempt, nowMs = Date.now()) {
   if (retryAfter !== null && retryAfter !== undefined && String(retryAfter).trim() !== '') {
     const seconds = Number(retryAfter);
@@ -47,7 +39,6 @@ export function retryDelayMs(retryAfter, attempt, nowMs = Date.now()) {
   }
   return Math.min(MAX_RETRY_DELAY_MS, 1000 * 2 ** (attempt - 1));
 }
-
 export class Salta7Client {
   constructor({ baseUrl = DEFAULT_BASE_URL, token = process.env.SALTA7_TOKEN, timeoutMs = DEFAULT_TIMEOUT_MS, retries = 3, allowInsecureHttp = false, fetchImpl = globalThis.fetch, sleepImpl = sleep } = {}) {
     if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) throw new CLIError(t('timeoutPositive'));
@@ -56,46 +47,35 @@ export class Salta7Client {
     this.baseUrl = validateBaseUrl(baseUrl, { allowInsecureHttp });
     this.token = token; this.timeoutMs = timeoutMs; this.retries = retries; this.fetchImpl = fetchImpl; this.sleepImpl = sleepImpl;
   }
-
   headers(auth = false) {
     const headers = { 'user-agent': 'salta7-cli-node/0.3.5', accept: 'application/json' };
     if (auth) { if (!this.token) throw new CLIError(t('tokenRequired')); headers.authorization = `Bearer ${this.token}`; }
     return headers;
   }
-
   async request(method, path, { auth = false, query, body, retryable = method === 'GET' } = {}) {
     const url = new URL(`${this.baseUrl}${path}`);
     for (const [key, value] of Object.entries(query ?? {})) if (value !== undefined && value !== null) url.searchParams.set(key, String(value));
     const attempts = retryable ? this.retries : 1;
     let lastError;
     for (let attempt = 1; attempt <= attempts; attempt += 1) {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), this.timeoutMs);
+      const controller = new AbortController(); const timer = setTimeout(() => controller.abort(), this.timeoutMs);
       try {
         const response = await this.fetchImpl(url, { method, headers: { ...this.headers(auth), ...(body ? { 'content-type': 'application/json' } : {}) }, body: body ? JSON.stringify(body) : undefined, signal: controller.signal });
-        const text = await response.text();
-        let payload = text;
-        if (text) { try { payload = JSON.parse(text); } catch { /* keep text */ } } else payload = null;
+        const text = await response.text(); let payload = text;
+        if (text) { try { payload = JSON.parse(text); } catch {} } else payload = null;
         if (response.ok) return payload;
-        if (attempt < attempts && RETRYABLE.has(response.status)) {
-          await this.sleepImpl(retryDelayMs(response.headers.get('retry-after'), attempt));
-          continue;
-        }
+        if (attempt < attempts && RETRYABLE.has(response.status)) { await this.sleepImpl(retryDelayMs(response.headers.get('retry-after'), attempt)); continue; }
         const detail = typeof payload === 'object' && payload ? (payload.detail ?? payload.error ?? JSON.stringify(payload)) : String(payload ?? '');
         throw new CLIError(`HTTP ${response.status}: ${detail}`, { status: response.status, data: payload });
       } catch (error) {
         if (error instanceof CLIError) throw error;
         lastError = error;
-        if (attempt >= attempts) {
-          const message = error?.name === 'AbortError' ? `Request timed out after ${this.timeoutMs}ms.` : `Network error: ${error?.message ?? error}`;
-          throw new CLIError(message);
-        }
+        if (attempt >= attempts) throw new CLIError(error?.name === 'AbortError' ? `Request timed out after ${this.timeoutMs}ms.` : `Network error: ${error?.message ?? error}`);
         await this.sleepImpl(retryDelayMs(null, attempt));
       } finally { clearTimeout(timer); }
     }
     throw new CLIError(`Network error: ${lastError?.message ?? 'unknown error'}`);
   }
-
   prices() { return this.request('GET', '/prices'); }
   stock(account) { return this.request('GET', '/stock', { query: { account } }); }
   balance() { return this.request('GET', '/balance', { auth: true }); }
@@ -107,7 +87,30 @@ export class Salta7Client {
   taskActive() { return this.request('GET', '/task/active', { auth: true }); }
   taskStatus(jobId) { return this.request('GET', '/task/status', { auth: true, query: { job_id: jobId } }); }
   taskHistory(tool, limit = 10) { return this.request('GET', '/task/history', { auth: true, query: { task: tool, limit } }); }
-  taskItems(jobId, byot = false) { return this.request('GET', byot ? '/task/byot/items' : '/task/items', { auth: true, query: { job_id: jobId } }); }
-  taskByotQuote(tokens, boostsNeeded = 0, humanize = false) { return this.request('POST', '/task/byot/quote', { auth: true, body: { tokens, boosts_needed: boostsNeeded, humanize }, retryable: false }); }
+  taskItems(jobId, options = false) { const byot = typeof options === 'object' ? Boolean(options.byot) : Boolean(options); return this.request('GET', byot ? '/task/byot/items' : '/task/items', { auth: true, query: { job_id: jobId } }); }
+  taskByotQuote(tokensOrOptions, boostsNeeded = 0, humanize = false) {
+    const options = Array.isArray(tokensOrOptions) ? { tokens: tokensOrOptions, boostsNeeded, humanize } : tokensOrOptions;
+    return this.request('POST', '/task/byot/quote', { auth: true, body: { tokens: options.tokens, boosts_needed: options.boostsNeeded ?? 0, humanize: Boolean(options.humanize) }, retryable: false });
+  }
   taskCreate(payload) { return this.request('POST', '/task/create', { auth: true, body: payload, retryable: false }); }
+  taskBoost({ mode, invite, boosts, product, tokens, boostsNeeded = 0, humanize }) {
+    const payload = { tool: 'boost', mode, invite };
+    if (mode === 'stock') { payload.boosts = boosts; if (product) payload.product = product; }
+    else { payload.tokens = tokens; payload.boosts_needed = boostsNeeded; }
+    if (humanize) payload.humanize = humanize;
+    return this.taskCreate(payload);
+  }
+  taskJoin({ mode, invite, tokens, product, quantity, humanize }) {
+    const payload = { tool: 'join', mode, invite };
+    if (mode === 'byot') payload.tokens = tokens;
+    else { if (product) payload.product = product; if (quantity !== undefined) payload.quantity = quantity; }
+    if (humanize) payload.humanize = humanize;
+    return this.taskCreate(payload);
+  }
+  taskHumanize({ mode, tokens, product, quantity, humanize }) {
+    const payload = { tool: 'humanize', mode, humanize };
+    if (mode === 'byot') payload.tokens = tokens;
+    else { if (product) payload.product = product; if (quantity !== undefined) payload.quantity = quantity; }
+    return this.taskCreate(payload);
+  }
 }
