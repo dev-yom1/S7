@@ -1,5 +1,7 @@
+import { readFileSync } from 'node:fs';
 import { t } from './i18n.js';
 
+const PACKAGE_VERSION = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version;
 const SENSITIVE_KEYS = new Set(['token', 'tokens', 'item_data', 'authorization', 'api_token', 'password', 'pass']);
 const ANSI = {
   reset: '\x1b[0m', bold: '\x1b[1m', dim: '\x1b[2m', red: '\x1b[31m', green: '\x1b[32m', yellow: '\x1b[33m', cyan: '\x1b[36m', brightCyan: '\x1b[96m', white: '\x1b[97m',
@@ -10,6 +12,7 @@ const LOGO = String.raw`   _____  _____
   \__ \    / /
  ___/ /   / /
 /____/   /_/`;
+let logoShown = false;
 
 function mask(value) {
   const text = String(value ?? '');
@@ -37,12 +40,17 @@ function paint(text, styles, enabled) {
   if (!enabled || !styles?.length) return rendered;
   return `${styles.map((s) => ANSI[s] ?? '').join('')}${rendered}${ANSI.reset}`;
 }
-export function printLogo(version, { noColor = false } = {}, io = console) {
+export function printLogo(version = PACKAGE_VERSION, { noColor = false } = {}, io = console) {
   const enabled = colorEnabled(noColor, io);
   io.log(paint(LOGO, ['bold', 'brightCyan'], enabled));
   io.log(`  ${paint('S A L T A 7   C L I', ['bold', 'white'], enabled)}  ${paint(`v${version}`, ['dim'], enabled)}`);
   io.log(`  ${paint(t('logo.tagline'), ['dim'], enabled)}`);
   io.log('');
+}
+function ensureLogo(noColor, io) {
+  if (logoShown) return;
+  printLogo(PACKAGE_VERSION, { noColor }, io);
+  logoShown = true;
 }
 function timeText() {
   return new Date().toLocaleTimeString('en-GB', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
@@ -69,7 +77,7 @@ function logLine(io, icon, message, enabled) {
 function banner(io, title, enabled) {
   io.log(`${paint('⚡ S7', ['bold', 'brightCyan'], enabled)} ${paint('•', ['dim'], enabled)} ${paint(title, ['bold'], enabled)}\n`);
 }
-export function printMenuHeader(version, { noColor = false } = {}, io = console) {
+export function printMenuHeader(version = PACKAGE_VERSION, { noColor = false } = {}, io = console) {
   const enabled = colorEnabled(noColor, io);
   io.log(`${paint('⚡ S7', ['bold', 'brightCyan'], enabled)} ${paint('•', ['dim'], enabled)} ${paint(t('menu.title'), ['bold'], enabled)} ${paint(`v${version}`, ['dim'], enabled)}`);
   io.log(paint('─'.repeat(42), ['dim'], enabled));
@@ -134,6 +142,7 @@ export function printResult(value, { json = false, jsonl = false, compact = fals
     io.log(JSON.stringify(value, null, (compact || jsonl) ? 0 : 2));
     return;
   }
+  ensureLogo(noColor, io);
   const enabled = colorEnabled(noColor, io);
   const safe = sanitize(value, { revealSecrets });
   const renderedTitle = title ?? t('common.result');
