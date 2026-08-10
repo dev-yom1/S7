@@ -8,6 +8,8 @@
 
 A polished Python command-line client for the Salta7 Store API, with multilingual UI, friendly colored output, task progress monitoring, raw JSON modes, and an arrow-key interactive menu.
 
+> **Node.js version:** The official Node.js CLI is available as `salta7-cli-node` with the `s7-node` command. See [`node/README.md`](node/README.md).
+
 > **API reference:** `https://salta7-store.vercel.app/api`
 
 ## Highlights
