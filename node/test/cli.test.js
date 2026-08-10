@@ -15,6 +15,35 @@ test('Japanese help is available', async () => {
   assert.match(lines.join('\n'), /使い方/);
 });
 
+test('Japanese balance uses localized Python-style human output', async () => {
+  const lines = [];
+  const client = { balance: async () => ({ name: 'leo', balance_usd: 12.4, admin_only: false }) };
+  const code = await run(['--lang', 'ja', '--no-color', 'balance'], { log: (v) => lines.push(v), error: (v) => lines.push(v) }, {}, { clientOverride: client });
+  assert.equal(code, 0);
+  const text = lines.join('\n');
+  assert.match(text, /⚡ S7 • 残高/);
+  assert.match(text, /名前/);
+  assert.match(text, /管理者限定/);
+  assert.match(text, /いいえ/);
+});
+
+test('Japanese interactive menu translates menu items', async () => {
+  const lines = [];
+  const answers = ['13'];
+  const client = {};
+  const code = await run(['--lang', 'ja', 'menu'], { log: (v) => lines.push(v), error: (v) => lines.push(v), warn: (v) => lines.push(v) }, {
+    isTTY: true,
+    prompt: async () => answers.shift() ?? '13',
+  }, { clientOverride: client });
+  assert.equal(code, 0);
+  const text = lines.join('\n');
+  assert.match(text, /何をしますか？/);
+  assert.match(text, /商品・価格一覧/);
+  assert.match(text, /残高を確認/);
+  assert.match(text, /Boostタスクを作成/);
+  assert.match(text, /終了/);
+});
+
 test('task boost creates Python-compatible payload with Humanize', async () => {
   let body;
   let authorization;
