@@ -1,6 +1,6 @@
 {
   "name": "salta7-cli-node",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "description": "Node.js CLI client for the Salta7 Store API",
   "type": "module",
   "engines": { "node": ">=22" },
